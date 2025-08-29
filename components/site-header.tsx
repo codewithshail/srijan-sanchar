@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
-import { ThemeToggle } from "./theme-toggle";
+import { AnimatedThemeToggler } from "./magicui/animated-theme-toggler";
 
 
 export default function SiteHeader() {
@@ -28,7 +28,7 @@ export default function SiteHeader() {
                 <Button size="sm">Sign In</Button>
             </Link>
           </SignedOut>
-          <ThemeToggle />
+          <AnimatedThemeToggler />
         </div>
       </div>
     </header>

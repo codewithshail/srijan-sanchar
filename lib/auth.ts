@@ -16,6 +16,11 @@ export const getCurrentUser = async () => {
     return user;
 };
 
+export const isUserAdmin = async (): Promise<boolean> => {
+    const user = await getCurrentUser();
+    return user?.role === "admin";
+}
+
 export const checkRole = async (role: UserRole) => {
     const user = await getCurrentUser();
 
@@ -25,8 +30,7 @@ export const checkRole = async (role: UserRole) => {
 };
 
 export const checkAdmin = async () => {
-    const user = await getCurrentUser();
-    if (!user || user.role !== "admin") {
+    if (!(await isUserAdmin())) {
         redirect("/");
     }
 };
@@ -36,4 +40,4 @@ export const checkPsychiatristOrAdmin = async () => {
     if (!user || (user.role !== "psychiatrist" && user.role !== "admin")) {
         redirect("/");
     }
-}
+};

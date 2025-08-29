@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
 	const model: `${string}/${string}` | `${string}/${string}:${string}` =
 		(process.env.REPLICATE_MODEL as `${string}/${string}` | `${string}/${string}:${string}`) ||
-		"black-forest-labs/FLUX.1-schnell";
+		"black-forest-labs/flux-dev";
 	const shortPrompt = prompt.split(/\s+/).slice(0, 40).join(" ");
 	const replicate = new Replicate({ auth: token });
 	const output = await replicate.run(model, {

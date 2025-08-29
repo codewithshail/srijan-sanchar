@@ -3,10 +3,16 @@ import { images, stages, stories, summaries, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { generateImagePrompt, generateSummariesAndSteps } from "@/lib/ai/gemini";
+import { generateImagePrompt, generateSummariesAndSteps, generateFullStory } from "@/lib/ai/gemini";
 import Replicate from "replicate";
 
-async function triggerBackgroundGeneration(storyId: string) {
+type GenerationConfig = {
+    generateImage: boolean;
+    storyType: 'summary' | 'full';
+    pageCount: number;
+};
+
+async function triggerBackgroundGeneration(storyId: string, config: GenerationConfig) {
     const allStages = await db.query.stages.findMany({
         where: eq(stages.storyId, storyId),
         orderBy: (stages, { asc }) => [asc(stages.stageIndex)],
@@ -15,36 +21,42 @@ async function triggerBackgroundGeneration(storyId: string) {
 
     if (selections.length !== 7) return;
 
-    // Run AI tasks in parallel
-    const [summaryData, imagePrompt] = await Promise.all([
-        generateSummariesAndSteps(selections),
-        generateImagePrompt(selections),
-    ]);
-
+    // Generate summaries and steps (always needed)
+    const summaryData = await generateSummariesAndSteps(selections);
+    
+    let longFormStory: string | undefined = undefined;
+    if (config.storyType === 'full') {
+        longFormStory = await generateFullStory(selections, config.pageCount);
+    }
+    
     await db.insert(summaries).values({
         storyId,
         userSummary: summaryData.userSummary,
         psySummary: summaryData.psySummary,
         actionableSteps: summaryData.actionableSteps,
+        longFormStory: longFormStory,
     });
     
-    // Generate Image with Replicate
-    const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! });
-    const model: `${string}/${string}` = "black-forest-labs/FLUX.1-schnell";
-    const output = await replicate.run(model, { input: { prompt: imagePrompt } } as unknown as Parameters<typeof replicate.run>[1]);
-    const imageUrl = Array.isArray(output) ? String(output[0]) : String(output);
+    // Conditionally generate image
+    if (config.generateImage) {
+        const imagePrompt = await generateImagePrompt(selections);
+        const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! });
+        const model: `${string}/${string}` = "black-forest-labs/FLUX.1-schnell";
+        const output = await replicate.run(model, { input: { prompt: imagePrompt } } as unknown as Parameters<typeof replicate.run>[1]);
+        const imageUrl = Array.isArray(output) ? String(output[0]) : String(output);
 
-    await db.insert(images).values({ storyId, prompt: imagePrompt, url: imageUrl });
+        await db.insert(images).values({ storyId, prompt: imagePrompt, url: imageUrl });
+    }
 
     // Finalize story
     await db.update(stories)
-        .set({ status: 'completed', title: `Story of a Journey` })
+        .set({ status: 'completed', title: `A New Chapter` })
         .where(eq(stories.id, storyId));
 }
 
-export async function POST(request: NextRequest, context: { params: Promise<{ storyId: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: { storyId: string } }) {
     try {
-        const { storyId } = await context.params;
+        const { storyId } = params;
         const { userId } = await auth();
         if (!userId) return new NextResponse("Unauthorized", { status: 401 });
         
@@ -52,7 +64,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ st
         if (!user) return new NextResponse("User not found", { status: 404 });
 
         const body = await request.json();
-        const { selection } = body;
+        const { selection, config } = body;
         if (!selection) return new NextResponse("Selection is required", { status: 400 });
 
         const currentStageData = await db.query.stages.findFirst({
@@ -69,12 +81,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ st
         await db.update(stories).set({ updatedAt: new Date() }).where(eq(stories.id, storyId));
         
         if (currentStageData.stageIndex === 6) {
-            // Note: You'll need to add 'generating_summary' to your enum or use 'draft'
+            // Save the final generation configuration
             await db.update(stories)
-                .set({ status: 'draft' }) // Changed from 'generating_summary'
+                .set({ status: 'draft', generationConfig: config })
                 .where(eq(stories.id, storyId));
 
-            triggerBackgroundGeneration(storyId);
+            triggerBackgroundGeneration(storyId, config);
             
             return NextResponse.json({ isCompleted: true });
         }

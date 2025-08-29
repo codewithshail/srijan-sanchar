@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, BookCopy } from "lucide-react";
 import { UsersTable } from "./users-table";
+import { StoriesTable } from "./stories-table";
 
 export default function AdminDashboardPage() {
   return (
@@ -9,13 +10,13 @@ export default function AdminDashboardPage() {
       <Tabs defaultValue="users" className="w-full">
         <TabsList>
           <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" /> User Management</TabsTrigger>
-          <TabsTrigger value="stories" disabled><BookCopy className="mr-2 h-4 w-4" /> Story Overview (Coming Soon)</TabsTrigger>
+          <TabsTrigger value="stories"><BookCopy className="mr-2 h-4 w-4" /> Story Overview</TabsTrigger>
         </TabsList>
         <TabsContent value="users">
             <UsersTable />
         </TabsContent>
         <TabsContent value="stories">
-            {/* Future component for viewing all stories will go here */}
+            <StoriesTable />
         </TabsContent>
       </Tabs>
     </div>

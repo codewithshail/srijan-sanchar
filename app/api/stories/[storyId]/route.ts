@@ -3,10 +3,11 @@ import { stories } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { isUserAdmin } from "@/lib/auth";
 
-export async function GET(request: NextRequest, context: { params: Promise<{ storyId: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: { storyId: string } }) {
     try {
-        const { storyId } = await context.params;
+        const { storyId } = params;
         const { userId } = await auth();
         
         const storyData = await db.query.stories.findFirst({
@@ -22,8 +23,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ sto
 
         const isOwner = userId === storyData.owner.clerkId;
         const isPublic = storyData.visibility !== 'private';
+        const isAdmin = await isUserAdmin();
 
-        if (!isOwner && !isPublic) {
+        if (!isOwner && !isPublic && !isAdmin) {
             return new NextResponse("Forbidden", { status: 403 });
         }
 

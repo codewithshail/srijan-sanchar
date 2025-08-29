@@ -1,0 +1,24 @@
+# Copy to .env.local
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# Database (Neon Postgres)
+DATABASE_URL=
+
+# Google Gemini
+GEMINI_API_KEY=
+
+# Replicate (image generation)
+REPLICATE_API_TOKEN=
+# Optional: override model, e.g. black-forest-labs/FLUX.1-schnell
+REPLICATE_MODEL=
+
+# ElevenLabs (multilingual TTS)
+ELEVENLABS_API_KEY=
+ELEVENLABS_VOICE_ID=
+
+# Next.js
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+

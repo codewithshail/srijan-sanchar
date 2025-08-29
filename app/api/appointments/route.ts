@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { appointments, stories, users } from "@/lib/schema";
+import { appointments, stories, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";

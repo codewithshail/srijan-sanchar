@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { FileText, Clock } from "lucide-react";
+import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 

@@ -4,14 +4,11 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
-  Image as ImageIcon,
   Loader2,
   BookOpen,
-  Send,
   ShieldCheck,
   Share2,
   Languages,
-  Star,
   Calendar,
 } from "lucide-react";
 import Image from "next/image";

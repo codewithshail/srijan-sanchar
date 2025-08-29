@@ -7,7 +7,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { google } from "googleapis";
 import { Resend } from "resend";
 import AppointmentConfirmationEmail from "@/components/emails/appointment-confirmation-email";
-import { appointments } from "@/lib/schema";
+import { appointments } from "@/lib/db/schema";
 
 // Ensure environment variables are set
 if (!process.env.RESEND_API_KEY) {
@@ -19,10 +19,15 @@ if (!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function PATCH(request: NextRequest, { params }: { params: { appointmentId: string } }) {
+export async function PATCH(
+    request: NextRequest, 
+    { params }: { params: Promise<{ appointmentId: string }> }
+) {
     try {
         await checkPsychiatristOrAdmin();
-        const { appointmentId } = params;
+        
+        // Await the params Promise to get the actual parameters
+        const { appointmentId } = await params;
         
         // 1. Fetch the appointment and the user associated with it
         const appointment = await db.query.appointments.findFirst({

@@ -5,9 +5,14 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { isUserAdmin } from "@/lib/auth";
 
-export async function GET(request: NextRequest, { params }: { params: { storyId: string } }) {
+export async function GET(
+    request: NextRequest, 
+    { params }: { params: Promise<{ storyId: string }> }
+) {
     try {
-        const { storyId } = params;
+        // Await the params Promise to get the actual parameters
+        const { storyId } = await params;
+        
         const { userId } = await auth();
         
         const storyData = await db.query.stories.findFirst({

@@ -7,7 +7,7 @@ import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { storyStatusEnum, storyVisibilityEnum } from "@/lib/schema";
+import { storyStatusEnum, storyVisibilityEnum } from "@/lib/db/schema";
 
 type Story = {
   id: string;

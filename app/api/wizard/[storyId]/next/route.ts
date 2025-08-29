@@ -54,9 +54,14 @@ async function triggerBackgroundGeneration(storyId: string, config: GenerationCo
         .where(eq(stories.id, storyId));
 }
 
-export async function POST(request: NextRequest, { params }: { params: { storyId: string } }) {
+export async function POST(
+    request: NextRequest, 
+    { params }: { params: Promise<{ storyId: string }> }
+) {
     try {
-        const { storyId } = params;
+        // Await the params Promise to get the actual parameters
+        const { storyId } = await params;
+        
         const { userId } = await auth();
         if (!userId) return new NextResponse("Unauthorized", { status: 401 });
         

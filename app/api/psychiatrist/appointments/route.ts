@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { checkPsychiatristOrAdmin } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { appointments } from "@/lib/schema";
+import { appointments } from "@/lib/db/schema";
 
 export async function GET() {
     try {

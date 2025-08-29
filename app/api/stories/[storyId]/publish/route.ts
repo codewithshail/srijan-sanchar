@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { stories, users } from "@/lib/schema";
+import { stories, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -9,9 +9,14 @@ const publishSchema = z.object({
     visibility: z.enum(["public_summary", "public_long"]),
 });
 
-export async function PATCH(request: NextRequest, { params }: { params: { storyId: string } }) {
+export async function PATCH(
+    request: NextRequest, 
+    { params }: { params: Promise<{ storyId: string }> }
+) {
     try {
-        const { storyId } = params;
+        // Await the params Promise to get the actual parameters
+        const { storyId } = await params;
+        
         const { userId } = await auth();
         if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 

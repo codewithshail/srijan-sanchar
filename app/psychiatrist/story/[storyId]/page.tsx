@@ -1,135 +1,157 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Image from "next/image";
+import { CheckCircle, Loader2 } from "lucide-react";
 
-type StoryForPsychiatrist = {
+type StoryImage = { url: string; prompt: string };
+type StorySummary = {
+  userSummary: string;
+  psySummary: string;
+  actionableSteps: (string | { [key: string]: string })[];
+  longFormStory?: string;
+};
+type StoryData = {
   id: string;
   title: string | null;
-  summarySnippet: string;
+  image: StoryImage | null;
+  summary: StorySummary | null;
+  owner: { firstName: string | null; lastName: string | null };
 };
 
-// You'd expand this with actual data
-type AppointmentRequest = {
-  id: string;
-  storyId: string;
-  user: { email: string }; // You would fetch more user details
-  createdAt: string;
-};
-
-export default function PsychiatristDashboardPage() {
-  const { data: stories, isLoading: isLoadingStories } = useQuery<
-    StoryForPsychiatrist[]
-  >({
-    queryKey: ["psychiatrist-stories"],
+export default function PsychiatristStoryViewPage({
+  params,
+}: {
+  params: { storyId: string };
+}) {
+  const {
+    data: story,
+    isLoading,
+    error,
+  } = useQuery<StoryData>({
+    queryKey: ["psychiatrist-story", params.storyId],
     queryFn: async () => {
-      const res = await fetch("/api/psychiatrist/stories");
-      if (!res.ok) throw new Error("Failed to fetch stories");
+      const res = await fetch(`/api/psychiatrist/stories/${params.storyId}`);
+      if (!res.ok) throw new Error("Failed to fetch story details");
       return res.json();
     },
+    retry: 1,
   });
 
-  // Placeholder for appointments API call
-  const { data: appointments, isLoading: isLoadingAppointments } = useQuery<
-    AppointmentRequest[]
-  >({
-    queryKey: ["psychiatrist-appointments"],
-    queryFn: async () => {
-      // This API route needs to be created
-      // const res = await fetch('/api/psychiatrist/appointments');
-      // if (!res.ok) throw new Error("Failed to fetch appointments");
-      // return res.json();
-      return []; // Returning empty array for now
-    },
-  });
+  if (isLoading) return <StoryViewSkeleton />;
+  if (error)
+    return (
+      <div className="container py-8 text-center text-destructive">
+        {(error as Error).message}
+      </div>
+    );
+  if (!story)
+    return (
+      <div className="container py-8 text-center">No story data available.</div>
+    );
+
+  const ownerName =
+    `${story.owner.firstName || ""} ${story.owner.lastName || ""}`.trim() ||
+    "Anonymous User";
 
   return (
-    <div className="container py-8">
-      <header className="mb-10">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Psychiatrist Dashboard
+    <article className="max-w-4xl mx-auto py-8 sm:py-12 px-4">
+      <header className="text-center mb-8 border-b pb-6">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+          {story.title ?? "A Patient's Story"}
         </h1>
-        <p className="mt-2 text-muted-foreground">
-          Review shared narratives and manage appointment requests.
+        <p className="mt-4 text-lg text-muted-foreground">
+          Clinical view for patient: <strong>{ownerName}</strong>
         </p>
       </header>
 
-      <Tabs defaultValue="stories" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="stories">Shared Stories</TabsTrigger>
-          <TabsTrigger value="appointments">Appointment Requests</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="stories">
-          {isLoadingStories && (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <StorySkeleton key={i} />
-              ))}
-            </div>
-          )}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-6">
-            {stories?.map((story) => (
-              <Link href={`/psychiatrist/story/${story.id}`} key={story.id}>
-                <Card className="h-full flex flex-col hover:border-primary transition-colors duration-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      {story.title ?? "Case Study"}
-                    </CardTitle>
-                    <CardDescription>
-                      Click to view full analysis
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <p className="text-sm text-muted-foreground italic">
-                      &quot;{story.summarySnippet}&quot;
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
+      {story.image && (
+        <div className="mb-8">
+          <div className="aspect-video relative w-full overflow-hidden rounded-lg border shadow-lg">
+            <Image
+              src={story.image.url}
+              alt={story.image.prompt}
+              fill
+              style={{ objectFit: "cover" }}
+            />
           </div>
-        </TabsContent>
+          <p className="text-sm text-muted-foreground mt-2 italic text-center">
+            Image prompt: &quot;{story.image.prompt}&quot;
+          </p>
+        </div>
+      )}
 
-        <TabsContent value="appointments">
-          <div className="mt-6">
-            {isLoadingAppointments && <p>Loading requests...</p>}
-            {!isLoadingAppointments && appointments?.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                No pending appointment requests.
-              </p>
-            )}
-            {/* Here you would map over appointments and display them */}
+      <Tabs defaultValue="psy-summary" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="psy-summary">Clinical Formulation</TabsTrigger>
+          <TabsTrigger value="user-narrative">Patient's Narrative</TabsTrigger>
+          <TabsTrigger value="action-plan">Actionable Steps</TabsTrigger>
+        </TabsList>
+        <TabsContent
+          value="psy-summary"
+          className="pt-6 prose dark:prose-invert max-w-none"
+        >
+          <h2>Psychiatrist Summary & Formulation</h2>
+          <p className="whitespace-pre-wrap">{story.summary?.psySummary}</p>
+        </TabsContent>
+        <TabsContent
+          value="user-narrative"
+          className="pt-6 prose dark:prose-invert max-w-none"
+        >
+          <h2>Patient's Summary</h2>
+          <p className="whitespace-pre-wrap">{story.summary?.userSummary}</p>
+          {story.summary?.longFormStory && (
+            <>
+              <hr className="my-8" />
+              <h2>Patient's Full Story</h2>
+              <div className="whitespace-pre-wrap">
+                {story.summary.longFormStory}
+              </div>
+            </>
+          )}
+        </TabsContent>
+        <TabsContent value="action-plan">
+          <div className="bg-muted/30 p-6 rounded-lg mt-6">
+            <h3 className="text-xl font-bold mb-4">
+              Proposed Actionable Steps
+            </h3>
+            <ul className="space-y-4">
+              {story.summary?.actionableSteps.map((step, i) => (
+                <li key={i} className="flex items-start">
+                  <CheckCircle className="h-5 w-5 text-green-500 mt-1 mr-3 flex-shrink-0" />
+                  <span>
+                    {typeof step === "string"
+                      ? step
+                      : String(Object.values(step)[0])}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+    </article>
   );
 }
 
-function StorySkeleton() {
+function StoryViewSkeleton() {
   return (
-    <Card>
-      <CardHeader>
-        <Skeleton className="h-6 w-3/4" />
-        <Skeleton className="h-4 w-1/4 mt-2" />
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-      </CardContent>
-    </Card>
+    <div className="max-w-4xl mx-auto py-8 sm:py-12 px-4">
+      <header className="text-center mb-8 border-b pb-6">
+        <Skeleton className="h-12 w-3/4 mx-auto" />
+        <Skeleton className="h-6 w-1/2 mx-auto mt-4" />
+      </header>
+      <Skeleton className="aspect-video w-full rounded-lg" />
+      <div className="mt-8">
+        <Skeleton className="h-10 w-full mb-4" />
+        <div className="space-y-2 pt-6">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+        </div>
+      </div>
+    </div>
   );
 }

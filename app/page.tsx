@@ -24,14 +24,19 @@ export default function Home() {
       {/* Action Buttons - Properly centered */}
       <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 mt-2">
         <SignedIn>
-          <Link href="/dashboard">
+          <Link href="/create">
             <Button size="lg" className="w-full sm:w-auto min-w-[200px]">
-              Go to Your Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+              Start Your Story <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/dashboard">
+            <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px]">
+              View Dashboard
             </Button>
           </Link>
           <Link href="/stories/public">
             <Button size="lg" variant="outline" className="w-full sm:w-auto min-w-[200px]">
-              Explore Public Stories
+              Explore Stories
             </Button>
           </Link>
         </SignedIn>

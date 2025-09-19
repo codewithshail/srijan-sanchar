@@ -1,33 +1,53 @@
 import { db } from "@/lib/db";
-import { stories } from "@/lib/db/schema";
 import { checkPsychiatristOrAdmin } from "@/lib/auth";
-import { ne } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { stories, summaries, appointments } from "@/lib/db/schema";
 
-// This route returns public stories, but it's protected to ensure only authorized roles can access it
-// An admin can also use this view.
 export async function GET() {
-    try {
-        await checkPsychiatristOrAdmin();
-        
-        const publicStories = await db.query.stories.findMany({
-            where: ne(stories.visibility, 'private'),
-            with: {
-                summary: { columns: { userSummary: true } },
-            },
-            orderBy: (stories, { desc }) => [desc(stories.createdAt)],
-            limit: 100,
-        });
+  try {
+    await checkPsychiatristOrAdmin();
 
-        const formattedStories = publicStories.map(s => ({
-            id: s.id,
-            title: s.title,
-            summarySnippet: s.summary?.userSummary?.substring(0, 150) + '...',
-        }));
+    // Get all stories that have been submitted for expert consultation
+    // These are stories with confirmed appointments or completed life stories
+    const storiesForReview = await db.query.stories.findMany({
+      where: and(
+        eq(stories.storyType, "life_story"),
+        eq(stories.status, "completed")
+      ),
+      with: {
+        summary: {
+          columns: {
+            userSummary: true,
+            psySummary: true,
+          },
+        },
+        owner: {
+          columns: {
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: (stories, { desc }) => [desc(stories.updatedAt)],
+    });
 
-        return NextResponse.json(formattedStories);
-    } catch (error) {
-        console.error("[PSY_GET_STORIES_ERROR]", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
-    }
+    // Transform the data to include summary snippets
+    const transformedStories = storiesForReview.map(story => ({
+      id: story.id,
+      title: story.title,
+      summarySnippet: story.summary?.userSummary 
+        ? story.summary.userSummary.substring(0, 150) + "..."
+        : "No summary available",
+      authorName: story.owner.firstName && story.owner.lastName
+        ? `${story.owner.firstName} ${story.owner.lastName}`
+        : story.owner.firstName || "Anonymous",
+      updatedAt: story.updatedAt,
+    }));
+
+    return NextResponse.json(transformedStories);
+  } catch (error) {
+    console.error("[PSY_GET_STORIES_ERROR]", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
 }

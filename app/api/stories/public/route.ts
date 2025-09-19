@@ -1,25 +1,93 @@
 import { db } from "@/lib/db";
-import { stories } from "@/lib/db/schema";
-import { ne } from "drizzle-orm";
+import { stories, users } from "@/lib/db/schema";
+import { ne, and, or, ilike, eq, desc, asc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const search = searchParams.get('search') || '';
+        const storyType = searchParams.get('storyType') || '';
+        const sortBy = searchParams.get('sortBy') || 'newest';
+        const author = searchParams.get('author') || '';
+
+        // Build where conditions
+        let whereConditions = [
+            eq(stories.status, 'published'),
+            ne(stories.visibility, 'private')
+        ];
+
+        // Add search condition
+        if (search) {
+            whereConditions.push(
+                or(
+                    ilike(stories.title, `%${search}%`),
+                    ilike(stories.content, `%${search}%`)
+                )!
+            );
+        }
+
+        // Add story type filter
+        if (storyType && (storyType === 'life_story' || storyType === 'blog_story')) {
+            whereConditions.push(eq(stories.storyType, storyType));
+        }
+
+        // Build order by
+        let orderBy;
+        switch (sortBy) {
+            case 'oldest':
+                orderBy = [asc(stories.publishedAt)];
+                break;
+            case 'mostViewed':
+                orderBy = [desc(stories.viewCount)];
+                break;
+            case 'title':
+                orderBy = [asc(stories.title)];
+                break;
+            default: // newest
+                orderBy = [desc(stories.publishedAt)];
+        }
+
         const publicStories = await db.query.stories.findMany({
-            where: ne(stories.visibility, 'private'),
+            where: and(...whereConditions),
             with: {
                 summary: { columns: { userSummary: true } },
-                owner: { columns: { id: true } } // Anonymized, can add username later
+                owner: { 
+                    columns: { 
+                        id: true, 
+                        firstName: true, 
+                        lastName: true 
+                    } 
+                }
             },
-            orderBy: (stories, { desc }) => [desc(stories.createdAt)],
+            orderBy,
             limit: 50,
         });
 
-        const formattedStories = publicStories.map(s => ({
+        // Filter by author name if specified
+        let filteredStories = publicStories;
+        if (author) {
+            filteredStories = publicStories.filter(story => {
+                const fullName = `${story.owner.firstName || ''} ${story.owner.lastName || ''}`.trim().toLowerCase();
+                return fullName.includes(author.toLowerCase());
+            });
+        }
+
+        const formattedStories = filteredStories.map(s => ({
             id: s.id,
-            title: s.title,
-            summarySnippet: s.summary?.userSummary?.substring(0, 150) + '...',
+            title: s.title || 'Untitled Story',
+            content: s.content,
+            storyType: s.storyType,
+            summarySnippet: s.summary?.userSummary?.substring(0, 150) + '...' || 
+                           s.content?.substring(0, 150) + '...' || 
+                           'No preview available',
             visibility: s.visibility,
+            authorName: `${s.owner.firstName || ''} ${s.owner.lastName || ''}`.trim() || 'Anonymous',
+            publishedAt: s.publishedAt,
+            viewCount: s.viewCount,
+            listenCount: s.listenCount,
+            thumbnailImageUrl: s.thumbnailImageUrl,
+            bannerImageUrl: s.bannerImageUrl,
         }));
 
         return NextResponse.json(formattedStories);

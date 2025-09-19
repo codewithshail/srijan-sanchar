@@ -1,6 +1,6 @@
 ## Story Writing – Life Story Wizard
 
-An end‑to‑end Next.js app where users craft a 7‑stage life story via a guided wizard. The system generates options with AI, stores progress in Postgres (via Drizzle ORM), and produces summaries, images, and TTS audio when complete.
+An end‑to‑end Next.js app where users craft a 7‑stage life story via a guided wizard. The system generates options with AI, stores progress in Postgres (via Drizzle ORM), and produces summaries, images, and multi-language TTS audio when complete.
 
 ### Key Features
 - 7‑step story wizard with option regeneration per step
@@ -8,7 +8,7 @@ An end‑to‑end Next.js app where users craft a 7‑stage life story via a gui
 - Postgres + Drizzle ORM schema for users, stories, stages, summaries, images
 - Background summary/image generation on completion
 - Image generation via Replicate (configurable model)
-- Optional text‑to‑speech via ElevenLabs
+- Multi-language text‑to‑speech via Sarvam AI Bulbul (13+ Indian languages + English)
 - Public/private visibility controls for stories
 
 ### High‑Level Architecture
@@ -57,7 +57,9 @@ Stories
 
 Media / AI
 - `POST /api/image` – generate an image (Replicate)
-- `POST /api/tts` – generate TTS (ElevenLabs)
+- `POST /api/tts` – generate TTS (Sarvam AI Bulbul)
+- `POST /api/tts/stream` – streaming TTS for long content
+- `GET /api/tts/languages` – get supported languages
 
 Note: Legacy endpoints `api/ai/*` and legacy pages `app/wizard/page.tsx` and `app/wizard/summary/page.tsx` were removed in favor of the canonical `wizard/{storyId}` flow.
 
@@ -88,7 +90,7 @@ Note: Legacy endpoints `api/ai/*` and legacy pages `app/wizard/page.tsx` and `ap
 - Clerk application (Frontend/API keys)
 - Google Gemini API key
 - Replicate API token (for images)
-- ElevenLabs API key (optional, for TTS)
+- Sarvam AI API key (for multi-language TTS)
 
 ### 2) Environment
 Copy `ENV_SAMPLE` to `.env.local` and fill:
@@ -96,7 +98,7 @@ Copy `ENV_SAMPLE` to `.env.local` and fill:
 - `DATABASE_URL`
 - `GEMINI_API_KEY`
 - `REPLICATE_API_TOKEN` and optional `REPLICATE_MODEL`
-- `ELEVENLABS_API_KEY` (and optional `ELEVENLABS_VOICE_ID`)
+- `SARVAM_API_KEY` (for Sarvam AI Bulbul TTS - supports 13+ Indian languages)
 - `NEXT_PUBLIC_APP_URL`
 
 ### 3) Install & run
@@ -122,7 +124,7 @@ Ensure `DATABASE_URL` is set. This project uses Drizzle ORM. If you need migrati
 ## Troubleshooting
 - 401/redirect: ensure Clerk keys and webhooks are configured and you’re signed in
 - Image generation fails: set `REPLICATE_API_TOKEN` and check model permissions
-- TTS 503: set `ELEVENLABS_API_KEY` or disable the feature in UI
+- TTS 503: set `SARVAM_API_KEY` for Sarvam AI Bulbul TTS service
 - DB errors: verify `DATABASE_URL` and that tables exist
 
 ## License

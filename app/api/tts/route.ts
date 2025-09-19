@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ElevenLabsClient } from "elevenlabs";
+import { sarvamTTS } from "@/lib/ai/sarvam-tts";
 import { z } from "zod";
 
 const bodySchema = z.object({
-	text: z.string().min(3).max(2500),
-	language: z.string().default("hi"),
+	text: z.string().min(3).max(5000),
+	language: z.string().default("hi-IN"),
+	speaker: z.string().optional().default("anushka"),
+	pitch: z.number().min(-20).max(20).optional().default(0),
+	pace: z.number().min(0.25).max(4.0).optional().default(1.0),
 });
 
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel (placeholder)
-
-if (!ELEVENLABS_API_KEY) {
-    console.warn("ELEVENLABS_API_KEY is not set. TTS API will not work.");
-}
-
 export async function POST(req: NextRequest) {
-    if (!ELEVENLABS_API_KEY) {
+    if (!sarvamTTS.isConfigured()) {
         return NextResponse.json({ error: "TTS service is not configured." }, { status: 503 });
     }
 
@@ -23,21 +19,34 @@ export async function POST(req: NextRequest) {
 	if (!parsed.success) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
-	const { text } = parsed.data;
+	const { text, language, speaker, pitch, pace } = parsed.data;
+
+	console.log('[TTS_API] Received text length:', text.length);
+	console.log('[TTS_API] Received text preview:', text.substring(0, 200) + '...');
+	console.log('[TTS_API] Language:', language);
 
 	try {
-        const client = new ElevenLabsClient({ apiKey: ELEVENLABS_API_KEY });
-        const audioStream = await client.textToSpeech.convert(DEFAULT_VOICE_ID, {
-            model_id: "eleven_multilingual_v2",
+        const result = await sarvamTTS.generateAudio({
             text,
+            language,
+            speaker,
+            pitch,
+            pace,
         });
         
-        // Correctly handle the stream
-        const headers = new Headers();
-        headers.set("Content-Type", "audio/mpeg");
+        if (result.error) {
+            return NextResponse.json({ error: result.error }, { status: 500 });
+        }
         
-        const body = audioStream as unknown as BodyInit;
-        return new NextResponse(body, { headers });
+        if (!result.audioData) {
+            return NextResponse.json({ error: "No audio data received" }, { status: 500 });
+        }
+        
+        const headers = new Headers();
+        headers.set("Content-Type", "audio/wav");
+        headers.set("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+        
+        return new NextResponse(result.audioData, { headers });
 
 	} catch (error) {
 		console.error("[TTS_ERROR]", error);

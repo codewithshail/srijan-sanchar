@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, LoadingButton } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Loader2, Mic, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,9 @@ import { Slider } from "@/components/ui/slider";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import StageOptions, {
+  type StageBlock,
+} from "@/components/wizard/stage-options";
 
 const STAGES = [
   "Early Childhood (Ages 0-6)",
@@ -37,7 +40,7 @@ const STAGES = [
 type StageData = {
   currentStageIndex: number;
   selection: string | null;
-  options: string[];
+  options: string[] | null;
   isCompleted: boolean;
 };
 
@@ -47,13 +50,12 @@ type GenerationConfig = {
   pageCount: number;
 };
 
-export default function WizardPage({
-  params,
-}: {
-  params: { storyId: string };
-}) {
+export default function WizardPage() {
   const router = useRouter();
-  const storyId = params.storyId;
+  const params = useParams();
+  const storyId = params.storyId as string;
+  const queryClient = useQueryClient();
+
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [manualInput, setManualInput] = useState("");
   const [isManualMode, setIsManualMode] = useState(false);
@@ -62,55 +64,70 @@ export default function WizardPage({
     storyType: "summary",
     pageCount: 1,
   });
-
-  const { transcript, listening, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-
-  useEffect(() => {
-    if (transcript) {
-      setManualInput(transcript);
-    }
-  }, [transcript]);
+  const [localOptions, setLocalOptions] = useState<string[]>([]);
 
   const {
-    data: stageData,
-    isLoading: isLoadingStage,
-    refetch,
-  } = useQuery<StageData>({
-    queryKey: ["wizardStage", storyId],
-    queryFn: async () => {
+    transcript,
+    listening,
+    browserSupportsSpeechRecognition,
+    resetTranscript,
+  } = useSpeechRecognition();
+  const [stageData, setStageData] = useState<StageData | null>(null);
+  const [isLoadingStage, setIsLoadingStage] = useState(true);
+
+  useEffect(() => {
+    if (transcript) setManualInput(transcript);
+  }, [transcript]);
+
+  useEffect(() => {
+    if (stageData?.options) {
+      setLocalOptions(stageData.options);
+    }
+  }, [stageData?.currentStageIndex, stageData?.options]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoadingStage(true);
       const res = await fetch(`/api/wizard/${storyId}`);
       if (!res.ok) throw new Error("Failed to fetch stage data");
       const data = await res.json();
+      setStageData(data);
+      setIsLoadingStage(false);
       if (data.isCompleted) {
         router.push(`/story/${storyId}`);
-        return data;
+        return;
       }
-      const isPredefinedOption = data.options?.includes(data.selection);
+      const isPredefined = data.options?.includes(data.selection);
       setSelectedOption(data.selection);
-      setIsManualMode(!isPredefinedOption && !!data.selection);
-      if (!isPredefinedOption && data.selection) {
-        setManualInput(data.selection);
-      }
-      return data;
-    },
-    refetchOnWindowFocus: false,
-  });
+      setIsManualMode(!isPredefined && !!data.selection);
+      if (!isPredefined && data.selection) setManualInput(data.selection);
+    };
+
+    if (storyId) {
+      fetchData();
+    }
+  }, [storyId, router]);
 
   const { mutate: regenerateOptions, isPending: isRegenerating } = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (): Promise<{ options: string[] }> => {
       const res = await fetch(`/api/wizard/${storyId}/regenerate`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Failed to regenerate options");
       return res.json();
     },
-    onSuccess: () => {
-      toast.success("New options generated!");
-      refetch();
+    onSuccess: (data) => {
+      toast.success("New options generated");
+      queryClient.setQueryData(
+        ["wizardStage", storyId],
+        (oldData: StageData | undefined) => {
+          if (!oldData) return oldData;
+          return { ...oldData, options: data.options };
+        }
+      );
     },
-    onError: () =>
-      toast.error("Could not generate new options. Please try again."),
+    onError: (e) =>
+      toast.error((e as Error).message || "Could not generate new options"),
   });
 
   const { mutate: saveAndNext, isPending: isSaving } = useMutation({
@@ -125,22 +142,21 @@ export default function WizardPage({
     },
     onSuccess: (data) => {
       if (data.isCompleted) {
-        toast.success("Story submitted! Generating your narrative...");
+        toast.success("Generating your narrative...");
         router.push(`/story/${storyId}`);
       } else {
         setManualInput("");
         setIsManualMode(false);
-        refetch();
+        resetTranscript();
+        setStageData(data);
       }
     },
     onError: () => toast.error("Failed to save. Please try again."),
   });
 
   const handleNext = () => {
-    const finalSelection = isManualMode ? manualInput : selectedOption;
-    if (finalSelection) {
-      saveAndNext(finalSelection);
-    }
+    const finalSelection = isManualMode ? manualInput.trim() : selectedOption;
+    if (finalSelection) saveAndNext(finalSelection);
   };
 
   const handleRadioChange = (value: string) => {
@@ -153,13 +169,34 @@ export default function WizardPage({
     setSelectedOption(null);
   };
 
+  const handleStageChange = (next: StageBlock) => {
+    const cleanOptions = next.options.map((o) =>
+      o.value.startsWith("*") ? o.value.slice(1) : o.value
+    );
+    setLocalOptions(cleanOptions);
+    const selected = next.options.find((o) => o.value.startsWith("*"));
+    setSelectedOption(
+      selected
+        ? selected.value.startsWith("*")
+          ? selected.value.slice(1)
+          : selected.value
+        : null
+    );
+    setIsManualMode(false);
+  };
+
   const stageIndex = stageData?.currentStageIndex ?? 0;
-  const isCompleted = stageData?.isCompleted ?? false;
   const isFinalStage = stageIndex === 6;
 
-  if (isLoadingStage || isCompleted) {
-    return <WizardSkeleton />;
-  }
+  if (isLoadingStage || !stageData) return <WizardSkeleton />;
+
+  const stageBlock: StageBlock = {
+    range: STAGES[stageIndex],
+    options: (localOptions ?? []).map((opt) => ({
+      label: opt,
+      value: selectedOption === opt ? `*${opt}` : opt,
+    })),
+  };
 
   return (
     <div className="container max-w-2xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -173,33 +210,25 @@ export default function WizardPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <RadioGroup
-            value={isManualMode ? "manual" : selectedOption ?? ""}
-            onValueChange={handleRadioChange}
-          >
-            {(stageData?.options ?? []).map((opt, i) => (
-              <Label
-                key={i}
-                htmlFor={`opt-${i}`}
-                className="flex items-start space-x-3 rounded-md border p-4 transition-colors hover:bg-accent has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:border-primary"
-              >
-                <RadioGroupItem id={`opt-${i}`} value={opt} className="mt-1" />
-                <span className="font-normal">{opt}</span>
-              </Label>
-            ))}
-            <Label
-              htmlFor="manual-opt"
-              className="flex items-start space-x-3 rounded-md border p-4 transition-colors hover:bg-accent has-[[data-state=checked]]:bg-accent has-[[data-state=checked]]:border-primary"
+          <StageOptions
+            stage={stageBlock}
+            onChange={handleStageChange}
+            singleSelect
+          />
+
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Didn&apos;t see your option?
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleManualMode}
             >
-              <RadioGroupItem
-                id="manual-opt"
-                value="manual"
-                className="mt-1"
-                onClick={handleManualMode}
-              />
-              <span className="font-normal">Write my own...</span>
-            </Label>
-          </RadioGroup>
+              Write my own...
+            </Button>
+          </div>
 
           {isManualMode && (
             <div className="relative">
@@ -207,13 +236,13 @@ export default function WizardPage({
                 placeholder="Describe your experience during this stage..."
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
-                className="pr-10"
+                className="pr-10 min-h-[100px]"
               />
               {browserSupportsSpeechRecognition && (
                 <Button
                   size="icon"
                   variant={listening ? "destructive" : "ghost"}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
+                  className="absolute right-2 top-2 h-7 w-7"
                   onClick={() =>
                     listening
                       ? SpeechRecognition.stopListening()
@@ -228,15 +257,22 @@ export default function WizardPage({
 
           {isFinalStage && (
             <div className="space-y-6 pt-6 border-t">
-              <h3 className="text-lg font-semibold">Final Touches</h3>
+              <h3 className="text-lg font-semibold">
+                Final Touches & Generation Options
+              </h3>
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <Label htmlFor="story-type">Story Format</Label>
+                <Label htmlFor="story-type" className="flex flex-col space-y-1">
+                  <span>Story Format</span>
+                  <span className="font-normal leading-snug text-muted-foreground text-sm">
+                    Choose a brief summary or a detailed story.
+                  </span>
+                </Label>
                 <RadioGroup
                   value={config.storyType}
                   onValueChange={(v: "summary" | "full") =>
                     setConfig((c) => ({ ...c, storyType: v }))
                   }
-                  className="flex"
+                  className="flex gap-4"
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="summary" id="summary" />
@@ -250,14 +286,14 @@ export default function WizardPage({
               </div>
               {config.storyType === "full" && (
                 <div className="rounded-lg border p-3">
-                  <Label>Story Length (approx pages)</Label>
+                  <Label>Story Length (approx. pages)</Label>
                   <div className="flex items-center gap-4 pt-2">
                     <Slider
                       defaultValue={[1]}
                       min={1}
                       max={5}
                       step={1}
-                      onValueChange={([v]) =>
+                      onValueChange={([v]: number[]) =>
                         setConfig((c) => ({ ...c, pageCount: v }))
                       }
                     />
@@ -268,13 +304,16 @@ export default function WizardPage({
                 </div>
               )}
               <div className="flex items-center justify-between rounded-lg border p-3">
-                <Label htmlFor="gen-image">
-                  Generate an AI image for your story?
+                <Label htmlFor="gen-image" className="flex flex-col space-y-1">
+                  <span>Generate AI Image</span>
+                  <span className="font-normal leading-snug text-muted-foreground text-sm">
+                    Create a unique image for your story.
+                  </span>
                 </Label>
                 <Switch
                   id="gen-image"
                   checked={config.generateImage}
-                  onCheckedChange={(v) =>
+                  onCheckedChange={(v: boolean) =>
                     setConfig((c) => ({ ...c, generateImage: v }))
                   }
                 />
@@ -287,25 +326,22 @@ export default function WizardPage({
             Step {stageIndex + 1} of 7
           </p>
           <div className="flex gap-2">
-            <Button
+            <LoadingButton
               variant="outline"
               onClick={() => regenerateOptions()}
-              disabled={isRegenerating || isSaving}
+              loading={isRegenerating}
+              disabled={isSaving}
+              icon={<Sparkles className="h-4 w-4" />}
             >
-              {isRegenerating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
               New Options
-            </Button>
-            <Button
+            </LoadingButton>
+            <LoadingButton
               onClick={handleNext}
-              disabled={(!selectedOption && !manualInput) || isSaving}
+              loading={isSaving}
+              disabled={!selectedOption && !manualInput.trim()}
             >
-              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isFinalStage ? "Finish & Generate Story" : "Save & Next"}
-            </Button>
+            </LoadingButton>
           </div>
         </CardFooter>
       </Card>
@@ -313,7 +349,6 @@ export default function WizardPage({
   );
 }
 
-// ... WizardSkeleton remains the same ...
 function WizardSkeleton() {
   return (
     <div className="container max-w-2xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -328,13 +363,7 @@ function WizardSkeleton() {
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </CardContent>
-        <CardFooter className="flex justify-between items-center">
-          <Skeleton className="h-4 w-16" />
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-        </CardFooter>
+        <CardFooter className="flex justify-between items-center" />
       </Card>
     </div>
   );

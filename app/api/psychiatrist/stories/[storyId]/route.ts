@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { checkPsychiatristOrAdmin } from "@/lib/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { stories } from "@/lib/db/schema";
 
@@ -16,8 +16,11 @@ export async function GET(
     const story = await db.query.stories.findFirst({
       where: and(
         eq(stories.id, storyId),
-        eq(stories.storyType, "life_story"),
-        eq(stories.status, "completed")
+        or(
+          eq(stories.status, "completed"),
+          eq(stories.status, "published"),
+          eq(stories.status, "pending_review")
+        )
       ),
       with: {
         summary: true,

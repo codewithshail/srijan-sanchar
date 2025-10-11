@@ -27,6 +27,11 @@ import {
   Eye,
   Headphones,
   Calendar,
+  BookOpen,
+  MessageSquare,
+  Heart,
+  Package,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,6 +49,15 @@ type Story = {
   listenCount?: number;
 };
 
+type DashboardStats = {
+  totalStories: number;
+  totalViews: number;
+  totalListens: number;
+  totalLikes: number;
+  totalComments: number;
+  totalPrintOrders: number;
+};
+
 type UserAppointment = {
   id: string;
   storyId: string;
@@ -59,9 +73,33 @@ type UserAppointment = {
   };
 };
 
+type PrintOrder = {
+  id: string;
+  storyId: string;
+  storyTitle: string | null;
+  orderStatus: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
+  bookSize: string;
+  coverType: string;
+  quantity: number;
+  totalAmount: number;
+  trackingNumber?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const qc = useQueryClient();
+  
+  const { data: stats, isLoading: isLoadingStats } = useQuery<DashboardStats>({
+    queryKey: ["dashboardStats"],
+    queryFn: async () => {
+      const res = await fetch("/api/dashboard/stats");
+      if (!res.ok) throw new Error("Failed to fetch stats");
+      return res.json();
+    },
+  });
+
   const { data: stories, isLoading } = useQuery<Story[]>({
     queryKey: ["userStories"],
     queryFn: async () => {
@@ -76,6 +114,15 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/appointments/user");
       if (!res.ok) throw new Error("Failed to fetch appointments");
+      return res.json();
+    },
+  });
+
+  const { data: printOrders, isLoading: isLoadingPrintOrders } = useQuery<PrintOrder[]>({
+    queryKey: ["printOrders"],
+    queryFn: async () => {
+      const res = await fetch("/api/print-orders");
+      if (!res.ok) throw new Error("Failed to fetch print orders");
       return res.json();
     },
   });
@@ -128,24 +175,96 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="container py-8">
+    <div className="container py-8 pb-24 md:pb-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <div className="flex gap-2">
-          <Link href="/create">
-            <LoadingButton
-              icon={<PlusCircle className="h-4 w-4" />}
-            >
-              New Story
-            </LoadingButton>
-          </Link>
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            Welcome back! Here's an overview of your stories.
+          </p>
         </div>
       </div>
 
+      {/* Quick Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Stories</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalStories || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalViews || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Listens</CardTitle>
+            <Headphones className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalListens || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
+            <Heart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalLikes || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Comments</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalComments || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Print Orders</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoadingStats ? "..." : stats?.totalPrintOrders || 0}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Tabs defaultValue="stories" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="stories">Your Stories</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+          <TabsTrigger value="stories">Stories</TabsTrigger>
           <TabsTrigger value="appointments">Expert Sessions</TabsTrigger>
+          <TabsTrigger value="print-orders">Print Orders</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -361,10 +480,97 @@ export default function DashboardPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="print-orders" className="space-y-6">
+          {isLoadingPrintOrders && <p>Loading your print orders...</p>}
+          
+          {!isLoadingPrintOrders && printOrders?.length === 0 && (
+            <div className="text-center py-12">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-2xl font-semibold">No Print Orders Yet</h2>
+              <p className="text-muted-foreground mt-2">
+                Order a printed copy of your story to have a physical keepsake.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {printOrders?.map((order) => (
+              <Card key={order.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {order.storyTitle || "Untitled Story"}
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        Order #{order.id.slice(0, 8)}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={
+                      order.orderStatus === "delivered" ? "default" :
+                      order.orderStatus === "shipped" ? "default" :
+                      order.orderStatus === "processing" ? "secondary" :
+                      order.orderStatus === "paid" ? "secondary" :
+                      order.orderStatus === "cancelled" ? "destructive" :
+                      "outline"
+                    }>
+                      {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Book Size:</span>
+                      <p className="font-medium">{order.bookSize}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Cover Type:</span>
+                      <p className="font-medium capitalize">{order.coverType}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quantity:</span>
+                      <p className="font-medium">{order.quantity}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Total Amount:</span>
+                      <p className="font-medium">₹{(order.totalAmount / 100).toFixed(2)}</p>
+                    </div>
+                  </div>
+                  
+                  {order.trackingNumber && (
+                    <div className="bg-muted p-3 rounded-lg">
+                      <span className="text-sm text-muted-foreground">Tracking Number:</span>
+                      <p className="font-mono font-medium">{order.trackingNumber}</p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                    <span>Ordered: {new Date(order.createdAt).toLocaleDateString()}</span>
+                    <span>Updated: {new Date(order.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
         <TabsContent value="analytics">
           <AnalyticsDashboard />
         </TabsContent>
       </Tabs>
+
+      {/* Floating Action Button */}
+      <Link href="/create">
+        <Button
+          size="lg"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:h-auto md:w-auto md:rounded-md md:px-4"
+          title="Create New Story"
+        >
+          <PlusCircle className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
+          <span className="hidden md:inline">New Story</span>
+        </Button>
+      </Link>
     </div>
   );
 }

@@ -14,6 +14,7 @@ export async function GET() {
       role: user.role,
       firstName: user.firstName,
       lastName: user.lastName,
+      hasCompletedOnboarding: user.hasCompletedOnboarding,
     });
   } catch (error) {
     console.error("[USER_PROFILE_ERROR]", error);

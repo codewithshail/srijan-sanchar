@@ -6,6 +6,8 @@ import {
   integer,
   jsonb,
   pgEnum,
+  index,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -39,12 +41,35 @@ export const appointmentStatusEnum = pgEnum("appointment_status", [
   "rejected",
 ]);
 
+export const jobStatusEnum = pgEnum("job_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);
+
+export const jobTypeEnum = pgEnum("job_type", [
+  "story_generation",
+  "image_generation",
+  "audio_generation",
+]);
+
+export const orderStatusEnum = pgEnum("order_status", [
+  "pending",
+  "paid",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   clerkId: text("clerk_id").notNull().unique(),
   firstName: text("first_name"),
   lastName: text("last_name"),
   role: userRoleEnum("role").notNull().default("user"),
+  hasCompletedOnboarding: boolean("has_completed_onboarding").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -134,9 +159,192 @@ export const storyAnalytics = pgTable("story_analytics", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Life Stage Templates - stores user's saved stage content for reuse
+export const lifeStageTemplates = pgTable(
+  "life_stage_templates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stageName: text("stage_name").notNull(), // "childhood", "teenage", etc.
+    content: text("content"),
+    language: text("language").default("en"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("life_stage_templates_user_id_idx").on(table.userId),
+    stageNameIdx: index("life_stage_templates_stage_name_idx").on(
+      table.stageName
+    ),
+  })
+);
+
+// Story Stages - stores individual life story stages
+export const storyStages = pgTable(
+  "story_stages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    stageIndex: integer("stage_index").notNull(),
+    stageName: text("stage_name").notNull(),
+    content: text("content"),
+    audioUrl: text("audio_url"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("story_stages_story_id_idx").on(table.storyId),
+    stageIndexIdx: index("story_stages_stage_index_idx").on(table.stageIndex),
+  })
+);
+
+// Comments - supports nested replies
+export const comments: any = pgTable(
+  "comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentCommentId: uuid("parent_comment_id").references(() => comments.id, {
+      onDelete: "cascade",
+    }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("comments_story_id_idx").on(table.storyId),
+    userIdIdx: index("comments_user_id_idx").on(table.userId),
+    parentCommentIdIdx: index("comments_parent_comment_id_idx").on(
+      table.parentCommentId
+    ),
+    createdAtIdx: index("comments_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Likes - tracks story likes
+export const likes = pgTable(
+  "likes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("likes_story_id_idx").on(table.storyId),
+    userIdIdx: index("likes_user_id_idx").on(table.userId),
+    // Composite index for checking if user already liked a story
+    storyUserIdx: index("likes_story_user_idx").on(table.storyId, table.userId),
+  })
+);
+
+// Audio Chapters - stores 1-minute audio chapters for stories
+export const audioChapters = pgTable(
+  "audio_chapters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    chapterIndex: integer("chapter_index").notNull(),
+    language: text("language").notNull(),
+    audioUrl: text("audio_url").notNull(),
+    duration: integer("duration"), // in seconds
+    startPosition: integer("start_position"), // character position in story
+    endPosition: integer("end_position"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("audio_chapters_story_id_idx").on(table.storyId),
+    languageIdx: index("audio_chapters_language_idx").on(table.language),
+    // Composite index for fetching chapters by story and language
+    storyLanguageIdx: index("audio_chapters_story_language_idx").on(
+      table.storyId,
+      table.language
+    ),
+  })
+);
+
+// Print Orders - tracks print-on-demand orders
+export const printOrders = pgTable(
+  "print_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orderStatus: orderStatusEnum("order_status").notNull().default("pending"),
+    bookSize: text("book_size").notNull(), // A5, A4, custom
+    coverType: text("cover_type").notNull(), // hardcover, paperback
+    quantity: integer("quantity").notNull().default(1),
+    totalAmount: integer("total_amount").notNull(), // in paise
+    razorpayOrderId: text("razorpay_order_id"),
+    razorpayPaymentId: text("razorpay_payment_id"),
+    shippingAddress: jsonb("shipping_address").notNull(),
+    trackingNumber: text("tracking_number"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("print_orders_user_id_idx").on(table.userId),
+    storyIdIdx: index("print_orders_story_id_idx").on(table.storyId),
+    orderStatusIdx: index("print_orders_order_status_idx").on(
+      table.orderStatus
+    ),
+    razorpayOrderIdIdx: index("print_orders_razorpay_order_id_idx").on(
+      table.razorpayOrderId
+    ),
+    createdAtIdx: index("print_orders_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Generation Jobs - tracks background processing jobs
+export const generationJobs = pgTable(
+  "generation_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    jobType: jobTypeEnum("job_type").notNull(),
+    status: jobStatusEnum("status").notNull().default("pending"),
+    config: jsonb("config"),
+    result: jsonb("result"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("generation_jobs_story_id_idx").on(table.storyId),
+    statusIdx: index("generation_jobs_status_idx").on(table.status),
+    jobTypeIdx: index("generation_jobs_job_type_idx").on(table.jobType),
+    createdAtIdx: index("generation_jobs_created_at_idx").on(table.createdAt),
+  })
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   stories: many(stories),
   appointments: many(appointments),
+  lifeStageTemplates: many(lifeStageTemplates),
+  comments: many(comments),
+  likes: many(likes),
+  printOrders: many(printOrders),
 }));
 
 export const storiesRelations = relations(stories, ({ one, many }) => ({
@@ -148,6 +356,12 @@ export const storiesRelations = relations(stories, ({ one, many }) => ({
   }),
   image: one(images, { fields: [stories.id], references: [images.storyId] }),
   analytics: many(storyAnalytics),
+  storyStages: many(storyStages),
+  comments: many(comments),
+  likes: many(likes),
+  audioChapters: many(audioChapters),
+  printOrders: many(printOrders),
+  generationJobs: many(generationJobs),
 }));
 
 export const appointmentsRelations = relations(appointments, ({ one }) => ({
@@ -162,6 +376,76 @@ export const appointmentsRelations = relations(appointments, ({ one }) => ({
 export const storyAnalyticsRelations = relations(storyAnalytics, ({ one }) => ({
   story: one(stories, {
     fields: [storyAnalytics.storyId],
+    references: [stories.id],
+  }),
+}));
+
+export const lifeStageTemplatesRelations = relations(
+  lifeStageTemplates,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [lifeStageTemplates.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const storyStagesRelations = relations(storyStages, ({ one }) => ({
+  story: one(stories, {
+    fields: [storyStages.storyId],
+    references: [stories.id],
+  }),
+}));
+
+export const commentsRelations = relations(comments, ({ one, many }) => ({
+  story: one(stories, {
+    fields: [comments.storyId],
+    references: [stories.id],
+  }),
+  user: one(users, {
+    fields: [comments.userId],
+    references: [users.id],
+  }),
+  parentComment: one(comments, {
+    fields: [comments.parentCommentId],
+    references: [comments.id],
+    relationName: "replies",
+  }),
+  replies: many(comments, { relationName: "replies" }),
+}));
+
+export const likesRelations = relations(likes, ({ one }) => ({
+  story: one(stories, {
+    fields: [likes.storyId],
+    references: [stories.id],
+  }),
+  user: one(users, {
+    fields: [likes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const audioChaptersRelations = relations(audioChapters, ({ one }) => ({
+  story: one(stories, {
+    fields: [audioChapters.storyId],
+    references: [stories.id],
+  }),
+}));
+
+export const printOrdersRelations = relations(printOrders, ({ one }) => ({
+  story: one(stories, {
+    fields: [printOrders.storyId],
+    references: [stories.id],
+  }),
+  user: one(users, {
+    fields: [printOrders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
+  story: one(stories, {
+    fields: [generationJobs.storyId],
     references: [stories.id],
   }),
 }));

@@ -26,7 +26,12 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
       if (!res.ok) throw new Error("Failed to create story");
       return res.json() as Promise<{ id: string }>;
     },
-    onSuccess: (data, storyType) => {
+    onSuccess: async (data, storyType) => {
+      // Mark onboarding as complete
+      await fetch("/api/user/complete-onboarding", {
+        method: "POST",
+      });
+      
       toast.success("New story started");
       if (storyType === 'life_story') {
         router.push(`/wizard/${data.id}`);

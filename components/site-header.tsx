@@ -29,36 +29,49 @@ export default function SiteHeader() {
           StoryWeave
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
-          <nav className="hidden items-center gap-2 md:flex">
-            <Link href="/stories/public">
+          <SignedOut>
+            <nav className="hidden items-center gap-2 md:flex">
+              <Link href="/stories/public">
                 <Button variant="ghost" size="sm">Explore Stories</Button>
+              </Link>
+            </nav>
+            <Link href="/sign-in">
+              <Button size="sm">Sign In</Button>
             </Link>
-          </nav>
+          </SignedOut>
+          
           <SignedIn>
-            {user?.role === "psychiatrist" && (
-              <Link href="/psychiatrist">
-                <Button variant="ghost" size="sm">Psychiatrist Panel</Button>
+            <nav className="hidden items-center gap-2 md:flex">
+              <Link href="/stories/public">
+                <Button variant="ghost" size="sm">Explore</Button>
               </Link>
-            )}
-            {user?.role === "admin" && (
-              <Link href="/admin">
-                <Button variant="ghost" size="sm">Admin Panel</Button>
-              </Link>
-            )}
-            <Link href="/create">
-                <Button variant="ghost" size="sm">Create Story</Button>
-            </Link>
-            <Link href="/dashboard">
+              
+              {/* Role-based navigation */}
+              {user?.role === "admin" && (
+                <Link href="/admin">
+                  <Button variant="ghost" size="sm">Admin</Button>
+                </Link>
+              )}
+              
+              {user?.role === "psychiatrist" && (
+                <Link href="/psychiatrist">
+                  <Button variant="ghost" size="sm">Psychiatrist</Button>
+                </Link>
+              )}
+              
+              {/* User navigation */}
+              <Link href="/dashboard">
                 <Button variant="ghost" size="sm">Dashboard</Button>
-            </Link>
+              </Link>
+              
+              <Link href="/create">
+                <Button variant="default" size="sm">+ New Story</Button>
+              </Link>
+            </nav>
+            
             {user?.role === "psychiatrist" && <PsychiatristNotifications />}
             <UserButton afterSignOutUrl="/" />
           </SignedIn>
-           <SignedOut>
-            <Link href="/sign-in">
-                <Button size="sm">Sign In</Button>
-            </Link>
-          </SignedOut>
           <AnimatedThemeToggler />
         </div>
       </div>

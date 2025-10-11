@@ -97,7 +97,8 @@ export async function GET(
             return new NextResponse("Story not found", { status: 404 });
         }
 
-        if (story.owner.clerkId !== userId) {
+        const ownerClerkId = Array.isArray(story.owner) ? story.owner[0]?.clerkId : story.owner.clerkId;
+        if (ownerClerkId !== userId) {
             return new NextResponse("Forbidden", { status: 403 });
         }
 

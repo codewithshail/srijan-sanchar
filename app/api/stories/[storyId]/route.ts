@@ -28,7 +28,8 @@ export async function GET(
       },
     });
     if (!storyData) return new NextResponse("Story not found", { status: 404 });
-    const isOwner = userId === storyData.owner.clerkId;
+    const ownerClerkId = Array.isArray(storyData.owner) ? storyData.owner[0]?.clerkId : storyData.owner.clerkId;
+    const isOwner = userId === ownerClerkId;
     const isPublic = storyData.visibility !== "private";
     const isAdmin = await isUserAdmin();
     if (!isOwner && !isPublic && !isAdmin)

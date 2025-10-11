@@ -68,27 +68,33 @@ export async function GET(request: Request) {
         let filteredStories = publicStories;
         if (author) {
             filteredStories = publicStories.filter(story => {
-                const fullName = `${story.owner.firstName || ''} ${story.owner.lastName || ''}`.trim().toLowerCase();
+                const owner = Array.isArray(story.owner) ? story.owner[0] : story.owner;
+                if (!owner) return false;
+                const fullName = `${owner.firstName || ''} ${owner.lastName || ''}`.trim().toLowerCase();
                 return fullName.includes(author.toLowerCase());
             });
         }
 
-        const formattedStories = filteredStories.map(s => ({
-            id: s.id,
-            title: s.title || 'Untitled Story',
-            content: s.content,
-            storyType: s.storyType,
-            summarySnippet: s.summary?.userSummary?.substring(0, 150) + '...' || 
-                           s.content?.substring(0, 150) + '...' || 
-                           'No preview available',
-            visibility: s.visibility,
-            authorName: `${s.owner.firstName || ''} ${s.owner.lastName || ''}`.trim() || 'Anonymous',
-            publishedAt: s.publishedAt,
-            viewCount: s.viewCount,
-            listenCount: s.listenCount,
-            thumbnailImageUrl: s.thumbnailImageUrl,
-            bannerImageUrl: s.bannerImageUrl,
-        }));
+        const formattedStories = filteredStories.map(s => {
+            const owner = Array.isArray(s.owner) ? s.owner[0] : s.owner;
+            const summary = Array.isArray(s.summary) ? s.summary[0] : s.summary;
+            return {
+                id: s.id,
+                title: s.title || 'Untitled Story',
+                content: s.content,
+                storyType: s.storyType,
+                summarySnippet: summary?.userSummary?.substring(0, 150) + '...' || 
+                               s.content?.substring(0, 150) + '...' || 
+                               'No preview available',
+                visibility: s.visibility,
+                authorName: owner ? `${owner.firstName || ''} ${owner.lastName || ''}`.trim() || 'Anonymous' : 'Anonymous',
+                publishedAt: s.publishedAt,
+                viewCount: s.viewCount,
+                listenCount: s.listenCount,
+                thumbnailImageUrl: s.thumbnailImageUrl,
+                bannerImageUrl: s.bannerImageUrl,
+            };
+        });
 
         return NextResponse.json(formattedStories);
     } catch (error) {

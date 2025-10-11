@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:verify": "tsx scripts/verify-schema.ts"
+    "db:verify": "tsx scripts/verify-schema.ts",
+    "workers": "tsx scripts/start-workers.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.11",
@@ -57,7 +58,9 @@
     "@tiptap/starter-kit": "^3.3.0",
     "@vercel/postgres": "^0.10.0",
     "ai": "^5.0.28",
+    "bullmq": "^5.61.0",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
@@ -67,6 +70,7 @@
     "geist": "1.4.2",
     "googleapis": "^159.0.0",
     "input-otp": "^1.4.2",
+    "ioredis": "^5.8.1",
     "ky": "^1.9.1",
     "lucide-react": "^0.542.0",
     "next": "15.5.2",

@@ -17,7 +17,10 @@ export async function GET() {
       id: s.id,
       title: s.title,
       visibility: s.visibility,
-      summarySnippet: (s.summary?.userSummary || "").slice(0, 250) + "...",
+      summarySnippet: (() => {
+        const summary = Array.isArray(s.summary) ? s.summary[0] : s.summary;
+        return (summary?.userSummary || "").slice(0, 250) + "...";
+      })(),
     }));
     return NextResponse.json(formatted);
   } catch {

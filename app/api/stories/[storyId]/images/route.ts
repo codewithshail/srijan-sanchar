@@ -40,7 +40,8 @@ export async function POST(
     }
 
     // Get story content for prompt generation
-    const storyContent = story.content || story.summary?.longFormStory || story.summary?.userSummary || "";
+    const summary = Array.isArray(story.summary) ? story.summary[0] : story.summary;
+    const storyContent = story.content || summary?.longFormStory || summary?.userSummary || "";
     const storyTitle = story.title || "My Story";
 
     if (!storyContent) {

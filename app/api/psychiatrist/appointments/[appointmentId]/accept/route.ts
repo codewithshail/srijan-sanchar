@@ -46,7 +46,11 @@ export async function PATCH(
     }
 
     // Fix 1: Properly await clerkClient before accessing properties
-    const clerkUser = await (await clerkClient()).users.getUser(appointment.user.clerkId);
+    const userClerkId = Array.isArray(appointment.user) ? appointment.user[0]?.clerkId : appointment.user.clerkId;
+    if (!userClerkId) {
+      return new NextResponse("User not found", { status: 404 });
+    }
+    const clerkUser = await (await clerkClient()).users.getUser(userClerkId);
     
     // Fix 2: Add proper type annotation for the find parameter
     const userEmail = clerkUser.emailAddresses.find(
@@ -55,7 +59,7 @@ export async function PATCH(
 
     if (!userEmail)
       throw new Error(
-        `Could not find primary email for user ${appointment.user.clerkId}`
+        `Could not find primary email for user ${userClerkId}`
       );
 
     const auth = new google.auth.JWT({

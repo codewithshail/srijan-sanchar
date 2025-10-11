@@ -104,7 +104,7 @@
   - Add appointment scheduling interface for expert consultations
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-- [ ] 14. Enhanced Psychiatrist Panel Functionality
+- [-] 14. Enhanced Psychiatrist Panel Functionality
 
   - Fix existing psychiatrist panel functionality and improve UI
   - Implement proper story review and analysis tools

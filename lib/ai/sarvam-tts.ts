@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { intelligentTextChunker } from "../text-chunking/intelligent-text-chunker";
+import { rateLimiter } from "./rate-limiter";
+import { AIServiceError } from "./types";
 
 // Sarvam AI Bulbul TTS API configuration
 const SARVAM_BASE_URL = "https://api.sarvam.ai/text-to-speech";
@@ -52,10 +54,14 @@ const ttsRequestSchema = z.object({
 export class SarvamTTSService {
   private apiKey: string;
   private baseUrl: string;
+  private maxRetries: number;
+  private retryDelayMs: number;
 
-  constructor(apiKey?: string) {
+  constructor(apiKey?: string, maxRetries: number = 3, retryDelayMs: number = 1000) {
     this.apiKey = apiKey || process.env.SARVAM_API_KEY || "";
     this.baseUrl = SARVAM_BASE_URL;
+    this.maxRetries = maxRetries;
+    this.retryDelayMs = retryDelayMs;
     
     if (!this.apiKey) {
       console.warn("SARVAM_API_KEY is not set. TTS service will not work.");
@@ -105,33 +111,52 @@ export class SarvamTTSService {
       return { error: `Language ${language} is not supported` };
     }
 
+    // Check rate limit
+    const allowed = await rateLimiter.checkLimit("tts");
+    if (!allowed) {
+      return { 
+        error: `Rate limit exceeded. Please try again in ${Math.ceil(rateLimiter.getResetTime("tts") / 1000)}s` 
+      };
+    }
+
     try {
-      const response = await fetch(this.baseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "API-Subscription-Key": this.apiKey,
-        },
-        body: JSON.stringify({
-          text: text,
-          target_language_code: language,
-          speaker: speaker,
-          pitch: pitch,
-          pace: pace,
-          loudness: 1,
-          speech_sample_rate: 22050,
-          enable_preprocessing: true,
-          model: "bulbul:v2",
-        }),
+      const response = await this.executeWithRetry(async () => {
+        return await fetch(this.baseUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "API-Subscription-Key": this.apiKey,
+          },
+          body: JSON.stringify({
+            text: text,
+            target_language_code: language,
+            speaker: speaker,
+            pitch: pitch,
+            pace: pace,
+            loudness: 1,
+            speech_sample_rate: 22050,
+            enable_preprocessing: true,
+            model: "bulbul:v2",
+          }),
+        });
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[SARVAM_TTS_ERROR]", response.status, errorText);
+        
+        // Handle rate limiting
+        if (response.status === 429) {
+          return { error: "Rate limit exceeded. Please try again later." };
+        }
+        
         return { error: `TTS API error: ${response.status}` };
       }
 
       const responseData = await response.json();
+      
+      // Record successful request
+      await rateLimiter.recordRequest("tts");
       console.log('[SARVAM_TTS] API Response keys:', Object.keys(responseData));
       console.log('[SARVAM_TTS] Audio count:', responseData.audios?.length || 0);
       
@@ -207,7 +232,57 @@ export class SarvamTTSService {
     }
   }
 
+  /**
+   * Execute function with retry logic
+   */
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    attempt: number = 0
+  ): Promise<T> {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt < this.maxRetries && this.isRetryable(error)) {
+        const delay = this.retryDelayMs * Math.pow(2, attempt);
+        console.log(
+          `[SARVAM_TTS] Retry attempt ${attempt + 1}/${
+            this.maxRetries
+          } after ${delay}ms`
+        );
+        await this.delay(delay);
+        return this.executeWithRetry(fn, attempt + 1);
+      }
+      throw error;
+    }
+  }
 
+  /**
+   * Check if error is retryable
+   */
+  private isRetryable(error: unknown): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes("network") ||
+        message.includes("timeout") ||
+        message.includes("503") ||
+        message.includes("econnreset")
+      );
+    }
+    // Also retry on Response objects with retryable status codes
+    if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as any).status;
+      return status === 503 || status === 500;
+    }
+    return false;
+  }
+
+  /**
+   * Delay utility
+   */
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 }
 
 // Export a singleton instance

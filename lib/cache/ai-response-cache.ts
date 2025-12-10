@@ -36,7 +36,17 @@ export interface CachedAIResponse<T> {
  * Provides caching for common AI operations
  */
 export class AIResponseCache {
-  private cache = getRedisCache();
+  private _cache: ReturnType<typeof getRedisCache> | null = null;
+
+  /**
+   * Get cache instance lazily to avoid connection during build
+   */
+  private get cache() {
+    if (!this._cache) {
+      this._cache = getRedisCache();
+    }
+    return this._cache;
+  }
 
   /**
    * Generate cache key for AI operation

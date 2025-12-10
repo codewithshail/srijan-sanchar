@@ -61,19 +61,26 @@ export class RedisCacheManager {
   private client: Redis | null = null;
   private isConnected: boolean = false;
   private connectionPromise: Promise<Redis | null> | null = null;
+  private initialized: boolean = false;
   private stats = {
     hits: 0,
     misses: 0,
   };
 
   constructor() {
-    this.initializeClient();
+    // Don't initialize in constructor to avoid connection during build
+    // Client will be lazily initialized on first use
   }
 
   /**
-   * Initialize Redis client
+   * Initialize Redis client lazily
    */
   private initializeClient(): void {
+    if (this.initialized) {
+      return;
+    }
+    this.initialized = true;
+
     const redisUrl = process.env.REDIS_URL;
 
     if (!redisUrl) {
@@ -116,6 +123,9 @@ export class RedisCacheManager {
    * Ensure Redis connection is established
    */
   private async ensureConnection(): Promise<Redis | null> {
+    // Lazily initialize client on first use
+    this.initializeClient();
+
     if (!this.client) {
       return null;
     }
@@ -151,6 +161,10 @@ export class RedisCacheManager {
    * Check if cache is available
    */
   isAvailable(): boolean {
+    // Don't initialize just to check availability - return false if not initialized
+    if (!this.initialized) {
+      return false;
+    }
     return this.client !== null && this.isConnected;
   }
 

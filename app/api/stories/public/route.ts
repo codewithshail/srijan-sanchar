@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { stories, users } from "@/lib/db/schema";
-import { ne, and, or, ilike, eq, desc, asc } from "drizzle-orm";
+import { stories, users, likes } from "@/lib/db/schema";
+import { ne, and, or, ilike, eq, desc, asc, count, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
         const author = searchParams.get('author') || '';
 
         // Build where conditions
-        let whereConditions = [
+        const whereConditions = [
             eq(stories.status, 'published'),
             ne(stories.visibility, 'private')
         ];
@@ -75,6 +75,23 @@ export async function GET(request: Request) {
             });
         }
 
+        // Get like counts for all stories
+        const storyIds = filteredStories.map(s => s.id);
+        let likeCountMap = new Map<string, number>();
+        
+        if (storyIds.length > 0) {
+            const likeCounts = await db
+                .select({
+                    storyId: likes.storyId,
+                    count: count(),
+                })
+                .from(likes)
+                .where(sql`${likes.storyId} = ANY(${storyIds})`)
+                .groupBy(likes.storyId);
+
+            likeCountMap = new Map(likeCounts.map(lc => [lc.storyId, lc.count]));
+        }
+
         const formattedStories = filteredStories.map(s => {
             const owner = Array.isArray(s.owner) ? s.owner[0] : s.owner;
             const summary = Array.isArray(s.summary) ? s.summary[0] : s.summary;
@@ -91,6 +108,8 @@ export async function GET(request: Request) {
                 publishedAt: s.publishedAt,
                 viewCount: s.viewCount,
                 listenCount: s.listenCount,
+                shareCount: s.shareCount,
+                likeCount: likeCountMap.get(s.id) || 0,
                 thumbnailImageUrl: s.thumbnailImageUrl,
                 bannerImageUrl: s.bannerImageUrl,
             };

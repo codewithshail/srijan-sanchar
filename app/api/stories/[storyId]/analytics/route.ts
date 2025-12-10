@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { stories, storyAnalytics } from "@/lib/db/schema";
+import { stories, storyAnalytics, comments, likes } from "@/lib/db/schema";
 import { eq, sql, desc, and, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -53,6 +53,13 @@ export async function POST(
                     listenCount: sql`${stories.listenCount} + 1` 
                 })
                 .where(eq(stories.id, storyId));
+        } else if (eventType === 'share') {
+            await db
+                .update(stories)
+                .set({ 
+                    shareCount: sql`${stories.shareCount} + 1` 
+                })
+                .where(eq(stories.id, storyId));
         }
 
         return NextResponse.json({ success: true });
@@ -82,6 +89,7 @@ export async function GET(
                 ownerId: true, 
                 viewCount: true, 
                 listenCount: true,
+                shareCount: true,
                 title: true,
                 publishedAt: true,
                 status: true
@@ -151,12 +159,31 @@ export async function GET(
             )
             .orderBy(sql`DATE(${storyAnalytics.createdAt})`);
 
+        // Get comment count
+        const commentCountResult = await db
+            .select({ count: count() })
+            .from(comments)
+            .where(eq(comments.storyId, storyId));
+        
+        const commentCount = commentCountResult[0]?.count || 0;
+
+        // Get like count
+        const likeCountResult = await db
+            .select({ count: count() })
+            .from(likes)
+            .where(eq(likes.storyId, storyId));
+        
+        const likeCount = likeCountResult[0]?.count || 0;
+
         return NextResponse.json({
             story: {
                 id: story.id,
                 title: story.title,
                 viewCount: story.viewCount,
                 listenCount: story.listenCount,
+                shareCount: story.shareCount,
+                commentCount,
+                likeCount,
                 publishedAt: story.publishedAt,
                 status: story.status,
             },

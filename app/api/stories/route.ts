@@ -3,15 +3,31 @@ import { stories, users } from "@/lib/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+import { 
+  checkRateLimit, 
+  recordRateLimitedRequest,
+  getRateLimitHeaders,
+  getRateLimitErrorResponse 
+} from "@/lib/rate-limiting";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    // Check rate limit
+    const { allowed, result } = await checkRateLimit(request, "stories");
+    if (!allowed && result) {
+      return getRateLimitErrorResponse(result);
+    }
+
     const { userId } = await auth();
     if (!userId) return new NextResponse("Unauthorized", { status: 401 });
     const user = await db.query.users.findFirst({
       where: eq(users.clerkId, userId),
     });
     if (!user) return new NextResponse("User not found", { status: 404 });
+    
+    // Record the request after successful auth
+    await recordRateLimitedRequest(request, "stories");
+    
     const userStories = await db.query.stories.findMany({
       where: eq(stories.ownerId, user.id),
       orderBy: (stories, { desc: d }) => [d(stories.updatedAt)],
@@ -26,7 +42,18 @@ export async function GET() {
         listenCount: true,
       },
     });
-    return NextResponse.json(userStories);
+    
+    const response = NextResponse.json(userStories);
+    
+    // Add rate limit headers to response
+    if (result) {
+      const headers = getRateLimitHeaders(result);
+      for (const [key, value] of Object.entries(headers)) {
+        response.headers.set(key, value);
+      }
+    }
+    
+    return response;
   } catch {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
@@ -34,6 +61,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limit for story creation
+    const { allowed, result } = await checkRateLimit(request, "stories");
+    if (!allowed && result) {
+      return getRateLimitErrorResponse(result);
+    }
+
     const { userId } = await auth();
     if (!userId) {
       console.error("[STORIES_POST] No userId from auth");
@@ -49,6 +82,9 @@ export async function POST(request: NextRequest) {
       console.error("[STORIES_POST] User not found for clerkId:", userId);
       return new NextResponse("User not found", { status: 404 });
     }
+
+    // Record the request after successful auth
+    await recordRateLimitedRequest(request, "stories");
 
     console.log("[STORIES_POST] Found user:", user.id);
 

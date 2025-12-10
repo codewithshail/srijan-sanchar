@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sarvamTTS } from "@/lib/ai/sarvam-tts";
 import { z } from "zod";
+import { 
+  checkRateLimit, 
+  recordRateLimitedRequest,
+  getRateLimitErrorResponse 
+} from "@/lib/rate-limiting";
 
 const bodySchema = z.object({
 	text: z.string().min(3).max(5000),
@@ -11,6 +16,12 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+    // Check rate limit for TTS requests
+    const { allowed, result } = await checkRateLimit(req, "tts");
+    if (!allowed && result) {
+      return getRateLimitErrorResponse(result);
+    }
+
     if (!sarvamTTS.isConfigured()) {
         return NextResponse.json({ error: "TTS service is not configured." }, { status: 503 });
     }
@@ -20,6 +31,9 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     }
 	const { text, language, speaker, pitch, pace } = parsed.data;
+
+    // Record the request
+    await recordRateLimitedRequest(req, "tts");
 
 	console.log('[TTS_API] Received text length:', text.length);
 	console.log('[TTS_API] Received text preview:', text.substring(0, 200) + '...');

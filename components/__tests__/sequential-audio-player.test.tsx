@@ -18,7 +18,13 @@ const mockAudioBuffer = {
   numberOfChannels: 1,
 };
 
-const mockBufferSource = {
+const mockBufferSource: {
+  buffer: AudioBuffer | null;
+  connect: ReturnType<typeof vi.fn>;
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+  onended: (() => void) | null;
+} = {
   buffer: null,
   connect: vi.fn(),
   start: vi.fn(),

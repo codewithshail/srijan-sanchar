@@ -18,11 +18,11 @@ import {
   Brain, 
   Target, 
   Clock,
-  MessageSquare,
   TrendingUp,
   AlertTriangle,
   BookOpen
 } from "lucide-react";
+import { useParams } from "next/navigation";
 
 type StoryImage = { url: string; prompt: string };
 type StorySummary = {
@@ -58,19 +58,19 @@ type StoryAnalytics = {
   viewsByLanguage: { [key: string]: number };
 };
 
-export default function PsychiatristStoryViewPage({
-  params,
-}: {
-  params: { storyId: string };
-}) {
+export default function PsychiatristStoryViewPage() {
+  // Use useParams hook for client components in Next.js 15
+  const params = useParams<{ storyId: string }>();
+  const storyId = params.storyId;
+
   const {
     data: story,
     isLoading,
     error,
   } = useQuery<StoryData>({
-    queryKey: ["psychiatrist-story", params.storyId],
+    queryKey: ["psychiatrist-story", storyId],
     queryFn: async () => {
-      const res = await fetch(`/api/psychiatrist/stories/${params.storyId}`);
+      const res = await fetch(`/api/psychiatrist/stories/${storyId}`);
       if (!res.ok) throw new Error("Failed to fetch story details");
       return res.json();
     },
@@ -78,9 +78,9 @@ export default function PsychiatristStoryViewPage({
   });
 
   const { data: analytics } = useQuery<StoryAnalytics>({
-    queryKey: ["story-analytics", params.storyId],
+    queryKey: ["story-analytics", storyId],
     queryFn: async () => {
-      const res = await fetch(`/api/stories/${params.storyId}/analytics`);
+      const res = await fetch(`/api/stories/${storyId}/analytics`);
       if (!res.ok) throw new Error("Failed to fetch analytics");
       return res.json();
     },

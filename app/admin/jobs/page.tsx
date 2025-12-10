@@ -36,6 +36,14 @@ interface Job {
   jobType: string;
   status: string;
   error?: string;
+  result?: {
+    duration?: number;
+    attemptsMade?: number;
+    maxAttempts?: number;
+    wordCount?: number;
+    imagesGenerated?: number;
+    chaptersGenerated?: number;
+  };
   createdAt: string;
   updatedAt: string;
   story?: {
@@ -99,6 +107,24 @@ export default function JobsAdminPage() {
         {status}
       </Badge>
     );
+  };
+
+  const handleRetryJob = async (jobId: string) => {
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/retry`, { method: 'POST' });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to retry job:', error);
+    }
+  };
+
+  const formatDuration = (ms?: number) => {
+    if (!ms) return '-';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
   };
 
   if (loading) {
@@ -250,8 +276,10 @@ export default function JobsAdminPage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Story</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Duration</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Error</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -260,16 +288,34 @@ export default function JobsAdminPage() {
                   <TableCell className="font-mono text-xs">
                     {job.id.slice(0, 8)}...
                   </TableCell>
-                  <TableCell>{job.jobType}</TableCell>
+                  <TableCell>
+                    <span className="text-xs">
+                      {job.jobType.replace('_', ' ')}
+                    </span>
+                  </TableCell>
                   <TableCell>
                     {job.story?.title || job.storyId.slice(0, 8)}
                   </TableCell>
                   <TableCell>{getStatusBadge(job.status)}</TableCell>
-                  <TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {formatDuration(job.result?.duration)}
+                  </TableCell>
+                  <TableCell className="text-xs">
                     {new Date(job.createdAt).toLocaleString()}
                   </TableCell>
                   <TableCell className="max-w-xs truncate text-xs text-muted-foreground">
                     {job.error || '-'}
+                  </TableCell>
+                  <TableCell>
+                    {job.status === 'failed' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRetryJob(job.id)}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

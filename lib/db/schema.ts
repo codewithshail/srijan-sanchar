@@ -54,6 +54,29 @@ export const jobTypeEnum = pgEnum("job_type", [
   "audio_generation",
 ]);
 
+export const contentFlagStatusEnum = pgEnum("content_flag_status", [
+  "pending",
+  "approved",
+  "rejected",
+  "auto_removed",
+]);
+
+export const contentFlagReasonEnum = pgEnum("content_flag_reason", [
+  "spam",
+  "inappropriate",
+  "harassment",
+  "hate_speech",
+  "violence",
+  "misinformation",
+  "copyright",
+  "other",
+]);
+
+export const contentTypeEnum = pgEnum("content_type", [
+  "story",
+  "comment",
+]);
+
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
   "paid",
@@ -89,6 +112,7 @@ export const stories = pgTable("stories", {
   publishedAt: timestamp("published_at"),
   viewCount: integer("view_count").notNull().default(0),
   listenCount: integer("listen_count").notNull().default(0),
+  shareCount: integer("share_count").notNull().default(0),
   generationConfig: jsonb("generation_config"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -149,15 +173,28 @@ export const appointments = pgTable("appointments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const storyAnalytics = pgTable("story_analytics", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  storyId: uuid("story_id")
-    .notNull()
-    .references(() => stories.id, { onDelete: "cascade" }),
-  eventType: text("event_type").notNull(), // 'view', 'listen', 'share'
-  languageCode: text("language_code"), // for TTS events
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const storyAnalytics = pgTable(
+  "story_analytics",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storyId: uuid("story_id")
+      .notNull()
+      .references(() => stories.id, { onDelete: "cascade" }),
+    eventType: text("event_type").notNull(), // 'view', 'listen', 'share'
+    languageCode: text("language_code"), // for TTS events
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    storyIdIdx: index("story_analytics_story_id_idx").on(table.storyId),
+    eventTypeIdx: index("story_analytics_event_type_idx").on(table.eventType),
+    createdAtIdx: index("story_analytics_created_at_idx").on(table.createdAt),
+    // Composite index for common query patterns
+    storyEventIdx: index("story_analytics_story_event_idx").on(
+      table.storyId,
+      table.eventType
+    ),
+  })
+);
 
 // Life Stage Templates - stores user's saved stage content for reuse
 export const lifeStageTemplates = pgTable(
@@ -246,7 +283,7 @@ export const likes = pgTable(
   (table) => ({
     storyIdIdx: index("likes_story_id_idx").on(table.storyId),
     userIdIdx: index("likes_user_id_idx").on(table.userId),
-    // Composite index for checking if user already liked a story
+    // Composite unique index to prevent duplicate likes
     storyUserIdx: index("likes_story_user_idx").on(table.storyId, table.userId),
   })
 );
@@ -447,5 +484,52 @@ export const generationJobsRelations = relations(generationJobs, ({ one }) => ({
   story: one(stories, {
     fields: [generationJobs.storyId],
     references: [stories.id],
+  }),
+}));
+
+// Content Flags - tracks flagged content for moderation
+export const contentFlags = pgTable(
+  "content_flags",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contentType: contentTypeEnum("content_type").notNull(),
+    contentId: uuid("content_id").notNull(), // story_id or comment_id
+    reporterId: uuid("reporter_id").references(() => users.id, { onDelete: "set null" }), // null for auto-detected
+    reason: contentFlagReasonEnum("reason").notNull(),
+    description: text("description"),
+    status: contentFlagStatusEnum("status").notNull().default("pending"),
+    moderatorId: uuid("moderator_id").references(() => users.id, { onDelete: "set null" }),
+    moderatorNotes: text("moderator_notes"),
+    autoDetected: boolean("auto_detected").default(false).notNull(),
+    confidenceScore: integer("confidence_score"), // 0-100 for auto-detection
+    resolvedAt: timestamp("resolved_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    contentTypeIdx: index("content_flags_content_type_idx").on(table.contentType),
+    contentIdIdx: index("content_flags_content_id_idx").on(table.contentId),
+    statusIdx: index("content_flags_status_idx").on(table.status),
+    reasonIdx: index("content_flags_reason_idx").on(table.reason),
+    createdAtIdx: index("content_flags_created_at_idx").on(table.createdAt),
+    // Composite index for common queries
+    contentStatusIdx: index("content_flags_content_status_idx").on(
+      table.contentType,
+      table.contentId,
+      table.status
+    ),
+  })
+);
+
+export const contentFlagsRelations = relations(contentFlags, ({ one }) => ({
+  reporter: one(users, {
+    fields: [contentFlags.reporterId],
+    references: [users.id],
+    relationName: "flagReporter",
+  }),
+  moderator: one(users, {
+    fields: [contentFlags.moderatorId],
+    references: [users.id],
+    relationName: "flagModerator",
   }),
 }));

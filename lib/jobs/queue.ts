@@ -16,23 +16,71 @@ export enum JobType {
 export interface JobData {
   storyId: string;
   config?: any;
+  /** Parent job ID for chained jobs */
+  parentJobId?: string;
+  /** Priority level (lower = higher priority) */
+  priority?: number;
 }
 
 export interface JobResult {
   success: boolean;
   data?: any;
   error?: string;
+  /** Duration in milliseconds */
+  duration?: number;
+  /** Child job IDs spawned by this job */
+  childJobIds?: string[];
 }
+
+export interface JobProgress {
+  progress: number;
+  message?: string;
+  stage?: string;
+}
+
+/**
+ * Default retry configuration with exponential backoff
+ */
+const DEFAULT_RETRY_CONFIG = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential' as const,
+    delay: 2000, // Start with 2 seconds
+  },
+};
+
+/**
+ * Job-specific retry configurations
+ */
+const JOB_RETRY_CONFIGS: Record<JobType, typeof DEFAULT_RETRY_CONFIG> = {
+  [JobType.STORY_GENERATION]: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 3000, // 3s, 6s, 12s
+    },
+  },
+  [JobType.IMAGE_GENERATION]: {
+    attempts: 4, // More retries for image generation (API can be flaky)
+    backoff: {
+      type: 'exponential',
+      delay: 5000, // 5s, 10s, 20s, 40s
+    },
+  },
+  [JobType.AUDIO_GENERATION]: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000, // 2s, 4s, 8s
+    },
+  },
+};
 
 // Create queues for different job types
 export const storyGenerationQueue = new Queue<JobData>('story-generation', {
   connection,
   defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    },
+    ...JOB_RETRY_CONFIGS[JobType.STORY_GENERATION],
     removeOnComplete: {
       count: 100, // Keep last 100 completed jobs
       age: 24 * 3600, // Keep for 24 hours
@@ -47,11 +95,7 @@ export const storyGenerationQueue = new Queue<JobData>('story-generation', {
 export const imageGenerationQueue = new Queue<JobData>('image-generation', {
   connection,
   defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    },
+    ...JOB_RETRY_CONFIGS[JobType.IMAGE_GENERATION],
     removeOnComplete: {
       count: 100,
       age: 24 * 3600,
@@ -66,11 +110,7 @@ export const imageGenerationQueue = new Queue<JobData>('image-generation', {
 export const audioGenerationQueue = new Queue<JobData>('audio-generation', {
   connection,
   defaultJobOptions: {
-    attempts: 3,
-    backoff: {
-      type: 'exponential',
-      delay: 2000,
-    },
+    ...JOB_RETRY_CONFIGS[JobType.AUDIO_GENERATION],
     removeOnComplete: {
       count: 100,
       age: 24 * 3600,
@@ -270,6 +310,174 @@ export class JobQueue {
 
     await queue.clean(grace, 100, 'completed');
     await queue.clean(grace * 7, 100, 'failed'); // Keep failed jobs longer
+  }
+
+  /**
+   * Get detailed job information including retry attempts
+   */
+  static async getJobDetails(
+    jobType: JobType,
+    jobId: string
+  ): Promise<{
+    id: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
+    progress: number;
+    attemptsMade: number;
+    maxAttempts: number;
+    data: JobData;
+    result?: any;
+    error?: string;
+    failedReason?: string;
+    processedOn?: Date;
+    finishedOn?: Date;
+    timestamp: Date;
+  } | null> {
+    const queue = this.getQueue(jobType);
+    const job = await queue.getJob(jobId);
+    
+    if (!job) {
+      return null;
+    }
+
+    const state = await job.getState();
+    let status: 'pending' | 'processing' | 'completed' | 'failed';
+    
+    switch (state) {
+      case 'waiting':
+      case 'delayed':
+        status = 'pending';
+        break;
+      case 'active':
+        status = 'processing';
+        break;
+      case 'completed':
+        status = 'completed';
+        break;
+      case 'failed':
+        status = 'failed';
+        break;
+      default:
+        status = 'pending';
+    }
+
+    return {
+      id: job.id!,
+      status,
+      progress: job.progress as number || 0,
+      attemptsMade: job.attemptsMade,
+      maxAttempts: job.opts.attempts || 3,
+      data: job.data,
+      result: job.returnvalue,
+      error: job.failedReason,
+      failedReason: job.failedReason,
+      processedOn: job.processedOn ? new Date(job.processedOn) : undefined,
+      finishedOn: job.finishedOn ? new Date(job.finishedOn) : undefined,
+      timestamp: new Date(job.timestamp),
+    };
+  }
+
+  /**
+   * Get queue instance by job type
+   */
+  private static getQueue(jobType: JobType): Queue<JobData> {
+    switch (jobType) {
+      case JobType.STORY_GENERATION:
+        return storyGenerationQueue;
+      case JobType.IMAGE_GENERATION:
+        return imageGenerationQueue;
+      case JobType.AUDIO_GENERATION:
+        return audioGenerationQueue;
+      default:
+        throw new Error(`Unknown job type: ${jobType}`);
+    }
+  }
+
+  /**
+   * Retry a failed job
+   */
+  static async retryJob(jobType: JobType, jobId: string): Promise<boolean> {
+    const queue = this.getQueue(jobType);
+    const job = await queue.getJob(jobId);
+    
+    if (!job) {
+      return false;
+    }
+
+    const state = await job.getState();
+    if (state !== 'failed') {
+      return false;
+    }
+
+    await job.retry();
+    return true;
+  }
+
+  /**
+   * Get all jobs for a specific story
+   */
+  static async getJobsForStory(
+    storyId: string
+  ): Promise<Array<{
+    jobType: JobType;
+    jobId: string;
+    status: string;
+    progress: number;
+    createdAt: Date;
+  }>> {
+    const results: Array<{
+      jobType: JobType;
+      jobId: string;
+      status: string;
+      progress: number;
+      createdAt: Date;
+    }> = [];
+
+    for (const jobType of Object.values(JobType)) {
+      const queue = this.getQueue(jobType);
+      
+      // Get all jobs (this is expensive, use sparingly)
+      const jobs = await queue.getJobs(['waiting', 'active', 'completed', 'failed', 'delayed']);
+      
+      for (const job of jobs) {
+        if (job.data.storyId === storyId) {
+          const state = await job.getState();
+          results.push({
+            jobType,
+            jobId: job.id!,
+            status: state,
+            progress: job.progress as number || 0,
+            createdAt: new Date(job.timestamp),
+          });
+        }
+      }
+    }
+
+    return results.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  /**
+   * Add a chained job (job that depends on another job)
+   */
+  static async addChainedJob(
+    jobType: JobType,
+    data: JobData,
+    parentJobId: string,
+    options?: {
+      priority?: number;
+      delay?: number;
+    }
+  ): Promise<string> {
+    return this.addJob(jobType, {
+      ...data,
+      parentJobId,
+    }, options);
+  }
+
+  /**
+   * Get retry configuration for a job type
+   */
+  static getRetryConfig(jobType: JobType): typeof DEFAULT_RETRY_CONFIG {
+    return JOB_RETRY_CONFIGS[jobType] || DEFAULT_RETRY_CONFIG;
   }
 }
 

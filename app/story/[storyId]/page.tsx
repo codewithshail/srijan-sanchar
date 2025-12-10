@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import { StoryReader } from "@/components/story-reader";
+import { EnhancedStoryViewer } from "@/components/enhanced-story-viewer";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import * as React from "react";
@@ -30,6 +30,7 @@ type StoryData = {
   publishedAt: string | null;
   viewCount: number;
   listenCount: number;
+  shareCount: number;
   owner: {
     id: string;
     clerkId: string;
@@ -130,5 +131,5 @@ export default function StoryPage() {
     );
   }
 
-  return <StoryReader story={story} isOwner={isOwner} />;
+  return <EnhancedStoryViewer story={story} isOwner={isOwner} />;
 }

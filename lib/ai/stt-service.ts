@@ -5,21 +5,10 @@
 
 import { rateLimiter } from "./rate-limiter";
 import { AIServiceError, STTRequest, STTResponse } from "./types";
+import { SUPPORTED_STT_LANGUAGES } from "./constants";
 
-// Supported languages for Google Cloud Speech-to-Text
-export const SUPPORTED_STT_LANGUAGES = [
-  { code: "en-IN", name: "English (India)", nativeName: "English" },
-  { code: "hi-IN", name: "Hindi", nativeName: "हिंदी" },
-  { code: "bn-IN", name: "Bengali", nativeName: "বাংলা" },
-  { code: "ta-IN", name: "Tamil", nativeName: "தமிழ்" },
-  { code: "te-IN", name: "Telugu", nativeName: "తెలుగు" },
-  { code: "gu-IN", name: "Gujarati", nativeName: "ગુજરાતી" },
-  { code: "kn-IN", name: "Kannada", nativeName: "ಕನ್ನಡ" },
-  { code: "ml-IN", name: "Malayalam", nativeName: "മലയാളം" },
-  { code: "mr-IN", name: "Marathi", nativeName: "मराठी" },
-  { code: "pa-IN", name: "Punjabi", nativeName: "ਪੰਜਾਬੀ" },
-  { code: "or-IN", name: "Odia", nativeName: "ଓଡ଼ିଆ" },
-];
+// Re-export for backward compatibility
+export { SUPPORTED_STT_LANGUAGES } from "./constants";
 
 export class STTService {
   private apiKey: string;

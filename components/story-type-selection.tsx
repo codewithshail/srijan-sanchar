@@ -34,7 +34,7 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
       
       toast.success("New story started");
       if (storyType === 'life_story') {
-        router.push(`/wizard/${data.id}`);
+        router.push(`/life-story/${data.id}`);
       } else {
         router.push(`/blog-editor/${data.id}`);
       }

@@ -1,13 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button, LoadingButton } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Eye, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowLeft,
+  Eye,
+  Loader2,
+  Clock,
+  FileText,
+  Sparkles,
+  AlertCircle,
+  Undo2,
+  X,
+  Send,
+} from "lucide-react";
 import RichTextEditor from "@/components/editor/rich-text-editor";
+import { CreativeAIToolbar, type AIAction } from "@/components/creative-story";
+import { VoiceInput } from "@/components/life-story/voice-input";
+import { StoryGenerationConfigDialog } from "@/components/story-generation-config-dialog";
 import { toast } from "sonner";
 
 interface BlogStory {
@@ -25,8 +42,38 @@ export default function BlogEditorPage() {
   const [story, setStory] = useState<BlogStory | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  
+  // AI features state
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const [currentAIAction, setCurrentAIAction] = useState<AIAction | null>(null);
+  const [aiError, setAIError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [previousContent, setPreviousContent] = useState<string | null>(null);
+  
+  // Voice input language preference
+  const [voiceLanguage, setVoiceLanguage] = useState<string>("en-IN");
+  
+  // Auto-save state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Generation dialog state
+  const [showGenerationDialog, setShowGenerationDialog] = useState(false);
+
+  // Load voice language preference from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedLanguage = localStorage.getItem("voice-input-language");
+      if (savedLanguage) {
+        setVoiceLanguage(savedLanguage);
+      }
+    }
+  }, []);
 
   // Load story data
   useEffect(() => {
@@ -43,7 +90,6 @@ export default function BlogEditorPage() {
         
         const storyData: BlogStory = await res.json();
         
-        // Ensure this is a blog story
         if (storyData.storyType !== "blog_story") {
           toast.error("This editor is only for blog stories");
           router.push(`/editor/${storyId}`);
@@ -65,6 +111,15 @@ export default function BlogEditorPage() {
     loadStory();
   }, [storyId, router]);
 
+  // Cleanup auto-save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Auto-save content function
   const handleAutoSave = useCallback(async (newContent: string) => {
     if (!storyId) return;
@@ -82,9 +137,10 @@ export default function BlogEditorPage() {
 
       const updatedStory = await res.json();
       setStory(prev => prev ? { ...prev, ...updatedStory } : null);
+      setLastSaved(new Date());
     } catch (error) {
       console.error("Auto-save failed:", error);
-      throw error; // Re-throw to let the editor handle the error
+      throw error;
     }
   }, [storyId]);
 
@@ -123,6 +179,144 @@ export default function BlogEditorPage() {
     setContent(newContent);
   };
 
+  // Generate description from content
+  const generateDescription = useCallback(async () => {
+    if (!content.trim() || content.length < 100) {
+      toast.error("Add more content to generate a description");
+      return;
+    }
+
+    try {
+      setIsGeneratingDescription(true);
+      const res = await fetch("/api/ai/creative-story-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: content,
+          action: "generate_description",
+          storyTitle: title,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to generate description");
+      }
+
+      const data = await res.json();
+      setDescription(data.result);
+      toast.success("Description generated!");
+    } catch (error) {
+      console.error("Error generating description:", error);
+      toast.error("Failed to generate description");
+    } finally {
+      setIsGeneratingDescription(false);
+    }
+  }, [content, title]);
+
+  // Handle voice input transcript
+  const handleVoiceTranscript = useCallback(
+    (transcript: string) => {
+      // For rich text editor, we need to append to the HTML content
+      const newContent = content
+        ? `${content}<p>${transcript}</p>`
+        : `<p>${transcript}</p>`;
+      setContent(newContent);
+      toast.success("Voice input added");
+      
+      // Trigger auto-save
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        handleAutoSave(newContent);
+      }, 2000);
+    },
+    [content, handleAutoSave]
+  );
+
+  // AI action handler
+  const handleAIAction = useCallback(
+    async (action: AIAction, options?: { targetLanguage?: string; tone?: string }) => {
+      // Get plain text from HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      const plainText = tempDiv.textContent || tempDiv.innerText || '';
+      
+      if (!plainText.trim()) {
+        toast.error("Please add some content first");
+        return;
+      }
+
+      setIsAIProcessing(true);
+      setCurrentAIAction(action);
+      setAIError(null);
+
+      try {
+        const response = await fetch("/api/ai/creative-story-assist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: plainText,
+            action,
+            targetLanguage: options?.targetLanguage,
+            tone: options?.tone,
+            storyTitle: title,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "AI assistance failed");
+        }
+
+        const data = await response.json();
+
+        if (action === "suggest") {
+          setSuggestions(data.result);
+          setShowSuggestions(true);
+          toast.success("Suggestions generated!");
+        } else {
+          // Save previous content for undo
+          setPreviousContent(content);
+          // Wrap result in paragraph tags for rich text editor
+          const newContent = `<p>${data.result.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`;
+          setContent(newContent);
+          
+          const actionLabels: Record<AIAction, string> = {
+            rewrite: "Content rewritten",
+            grammar: "Grammar improved",
+            expand: "Content expanded",
+            translate: "Content translated",
+            suggest: "Suggestions generated",
+          };
+          toast.success(actionLabels[action]);
+          
+          // Auto-save the AI-modified content
+          handleAutoSave(newContent);
+        }
+      } catch (error: unknown) {
+        console.error("AI action error:", error);
+        const errorMessage = error instanceof Error ? error.message : "AI assistance failed";
+        setAIError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsAIProcessing(false);
+        setCurrentAIAction(null);
+      }
+    },
+    [content, title, handleAutoSave]
+  );
+
+  // Undo AI changes
+  const handleUndo = useCallback(() => {
+    if (previousContent !== null) {
+      setContent(previousContent);
+      setPreviousContent(null);
+      toast.success("Changes undone");
+      handleAutoSave(previousContent);
+    }
+  }, [previousContent, handleAutoSave]);
+
   // Navigate to preview
   const handlePreview = () => {
     if (!title.trim()) {
@@ -131,6 +325,18 @@ export default function BlogEditorPage() {
     }
     router.push(`/story/${storyId}`);
   };
+
+  // Calculate word count
+  const getWordCount = useCallback((html: string) => {
+    if (!html) return 0;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    const text = tempDiv.textContent || tempDiv.innerText || '';
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }, []);
+
+  const wordCount = getWordCount(content);
+  const readingTime = Math.ceil(wordCount / 200);
 
   if (isLoading) {
     return (
@@ -148,7 +354,7 @@ export default function BlogEditorPage() {
             <CardTitle>Story Not Found</CardTitle>
           </CardHeader>
           <CardContent>
-            <p>The story you're looking for doesn't exist or you don't have permission to edit it.</p>
+            <p>The story you&apos;re looking for doesn&apos;t exist or you don&apos;t have permission to edit it.</p>
             <Button asChild className="mt-4">
               <Link href="/dashboard">Back to Dashboard</Link>
             </Button>
@@ -174,13 +380,58 @@ export default function BlogEditorPage() {
             Preview Story
           </Button>
           <Button 
-            onClick={() => router.push(`/publish/${storyId}`)} 
+            onClick={() => setShowGenerationDialog(true)} 
             disabled={!title.trim() || !content.trim()}
           >
-            Publish Story
+            <Send className="mr-2 h-4 w-4" />
+            Generate Story
           </Button>
         </div>
       </div>
+
+      {/* AI Error Alert */}
+      {aiError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{aiError}</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setAIError(null)}
+              className="h-6 px-2"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* AI Suggestions Panel */}
+      {showSuggestions && suggestions && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                AI Suggestions
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSuggestions(false)}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm whitespace-pre-wrap">{suggestions}</div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Title Editor */}
       <Card>
@@ -213,6 +464,86 @@ export default function BlogEditorPage() {
         </CardContent>
       </Card>
 
+      {/* Auto-generated Description */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base">Story Description</CardTitle>
+              <CardDescription>
+                Auto-generated from your content for sharing and discovery
+              </CardDescription>
+            </div>
+            <LoadingButton
+              variant="outline"
+              size="sm"
+              onClick={generateDescription}
+              loading={isGeneratingDescription}
+              loadingText="Generating..."
+              disabled={!content.trim() || content.length < 100}
+              icon={<Sparkles className="h-4 w-4" />}
+            >
+              Generate
+            </LoadingButton>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder="Click 'Generate' to create a description from your story content..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            className="resize-none"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Stats and AI Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-4">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <FileText className="h-3 w-3" />
+            {wordCount} words
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {readingTime} min read
+          </Badge>
+          {lastSaved && (
+            <span className="text-xs text-muted-foreground">
+              Saved {formatLastSaved(lastSaved)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <CreativeAIToolbar
+            onAction={handleAIAction}
+            disabled={isAIProcessing}
+            isProcessing={isAIProcessing}
+            currentAction={currentAIAction}
+            hasContent={content.trim().length > 0}
+          />
+          {previousContent !== null && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleUndo}
+              className="h-8 gap-1 text-muted-foreground"
+            >
+              <Undo2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Undo AI</span>
+            </Button>
+          )}
+          <VoiceInput
+            onTranscript={handleVoiceTranscript}
+            disabled={isAIProcessing}
+            defaultLanguage={voiceLanguage}
+            compact
+          />
+        </div>
+      </div>
+
       {/* Content Editor */}
       <Card>
         <CardHeader>
@@ -238,13 +569,39 @@ export default function BlogEditorPage() {
             <ul className="list-disc list-inside space-y-1 ml-4">
               <li>Use headings to structure your story into sections</li>
               <li>Add images to make your story more engaging</li>
-              <li>Use the AI Assist feature to improve your writing</li>
+              <li>Use the AI Assist toolbar to improve, expand, or translate your writing</li>
+              <li>Click the microphone icon to add content using voice input</li>
               <li>Your content is automatically saved as you type</li>
-              <li>Click "Preview Story" to see how it will look to readers</li>
+              <li>Generate a description to help readers discover your story</li>
             </ul>
           </div>
         </CardContent>
       </Card>
+
+      {/* Story Generation Config Dialog */}
+      <StoryGenerationConfigDialog
+        storyId={storyId}
+        storyType="blog_story"
+        open={showGenerationDialog}
+        onOpenChange={setShowGenerationDialog}
+        onComplete={() => router.push(`/story/${storyId}`)}
+      />
     </div>
   );
+}
+
+function formatLastSaved(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  
+  if (minutes < 1) return "just now";
+  if (minutes === 1) return "1 minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+  
+  return date.toLocaleDateString();
 }

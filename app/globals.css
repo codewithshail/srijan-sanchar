@@ -45,71 +45,78 @@
 
 :root {
   --radius: 0.625rem;
+  /* White & Blue Professional Theme */
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.2 0.02 250);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.2 0.02 250);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.2 0.02 250);
+  /* Primary Blue */
+  --primary: oklch(0.55 0.2 250);
+  --primary-foreground: oklch(1 0 0);
+  /* Secondary - Light Blue */
+  --secondary: oklch(0.96 0.02 250);
+  --secondary-foreground: oklch(0.35 0.15 250);
+  /* Muted */
+  --muted: oklch(0.97 0.01 250);
+  --muted-foreground: oklch(0.5 0.03 250);
+  /* Accent - Lighter Blue */
+  --accent: oklch(0.92 0.04 250);
+  --accent-foreground: oklch(0.35 0.15 250);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.92 0.02 250);
+  --input: oklch(0.92 0.02 250);
+  --ring: oklch(0.55 0.2 250);
+  /* Charts - Blue variations */
+  --chart-1: oklch(0.55 0.2 250);
+  --chart-2: oklch(0.65 0.18 230);
+  --chart-3: oklch(0.45 0.15 260);
+  --chart-4: oklch(0.7 0.15 220);
+  --chart-5: oklch(0.6 0.12 240);
+  /* Sidebar */
+  --sidebar: oklch(0.99 0.005 250);
+  --sidebar-foreground: oklch(0.2 0.02 250);
+  --sidebar-primary: oklch(0.55 0.2 250);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.96 0.02 250);
+  --sidebar-accent-foreground: oklch(0.35 0.15 250);
+  --sidebar-border: oklch(0.92 0.02 250);
+  --sidebar-ring: oklch(0.55 0.2 250);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.15 0.02 250);
+  --foreground: oklch(0.95 0.01 250);
+  --card: oklch(0.2 0.02 250);
+  --card-foreground: oklch(0.95 0.01 250);
+  --popover: oklch(0.2 0.02 250);
+  --popover-foreground: oklch(0.95 0.01 250);
+  --primary: oklch(0.65 0.18 250);
+  --primary-foreground: oklch(0.15 0.02 250);
+  --secondary: oklch(0.25 0.03 250);
+  --secondary-foreground: oklch(0.9 0.02 250);
+  --muted: oklch(0.25 0.02 250);
+  --muted-foreground: oklch(0.7 0.03 250);
+  --accent: oklch(0.3 0.04 250);
+  --accent-foreground: oklch(0.9 0.02 250);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.65 0.18 250);
+  --chart-1: oklch(0.65 0.2 250);
+  --chart-2: oklch(0.7 0.16 230);
+  --chart-3: oklch(0.55 0.14 260);
+  --chart-4: oklch(0.75 0.14 220);
+  --chart-5: oklch(0.68 0.12 240);
+  --sidebar: oklch(0.18 0.02 250);
+  --sidebar-foreground: oklch(0.95 0.01 250);
+  --sidebar-primary: oklch(0.65 0.18 250);
+  --sidebar-primary-foreground: oklch(0.95 0.01 250);
+  --sidebar-accent: oklch(0.25 0.03 250);
+  --sidebar-accent-foreground: oklch(0.9 0.02 250);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.65 0.18 250);
 }
 
 @layer base {
@@ -121,7 +128,254 @@
   }
 }
 
+
+/* ============================================
+   Multi-Language Font Support
+   ============================================ */
+
+/* Language-specific font families */
+:root {
+  --font-devanagari: "Noto Sans Devanagari", "Mangal", "Devanagari MT", sans-serif;
+  --font-bengali: "Noto Sans Bengali", "Vrinda", "Bangla MN", sans-serif;
+  --font-tamil: "Noto Sans Tamil", "Latha", "Tamil MN", sans-serif;
+  --font-telugu: "Noto Sans Telugu", "Gautami", "Telugu MN", sans-serif;
+  --font-gujarati: "Noto Sans Gujarati", "Shruti", "Gujarati MT", sans-serif;
+  --font-kannada: "Noto Sans Kannada", "Tunga", "Kannada MN", sans-serif;
+  --font-malayalam: "Noto Sans Malayalam", "Kartika", "Malayalam MN", sans-serif;
+  --font-gurmukhi: "Noto Sans Gurmukhi", "Raavi", "Gurmukhi MN", sans-serif;
+  --font-oriya: "Noto Sans Oriya", "Kalinga", "Oriya MN", sans-serif;
+}
+
+/* Hindi and Marathi (Devanagari script) */
+html[lang="hi"],
+html[lang="mr"] {
+  --font-locale: var(--font-devanagari);
+}
+
+/* Bengali */
+html[lang="bn"] {
+  --font-locale: var(--font-bengali);
+}
+
+/* Tamil */
+html[lang="ta"] {
+  --font-locale: var(--font-tamil);
+}
+
+/* Telugu */
+html[lang="te"] {
+  --font-locale: var(--font-telugu);
+}
+
+/* Gujarati */
+html[lang="gu"] {
+  --font-locale: var(--font-gujarati);
+}
+
+/* Kannada */
+html[lang="kn"] {
+  --font-locale: var(--font-kannada);
+}
+
+/* Malayalam */
+html[lang="ml"] {
+  --font-locale: var(--font-malayalam);
+}
+
+/* Punjabi (Gurmukhi script) */
+html[lang="pa"] {
+  --font-locale: var(--font-gurmukhi);
+}
+
+/* Odia */
+html[lang="or"] {
+  --font-locale: var(--font-oriya);
+}
+
+/* English (default) */
+html[lang="en"] {
+  --font-locale: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Apply locale font to body and content areas */
+.locale-content,
+.story-content,
+.editor-content,
+[data-locale-font="true"] {
+  font-family: var(--font-locale, inherit);
+}
+
+/* Ensure proper line height for complex scripts */
+html[lang="hi"] .locale-content,
+html[lang="mr"] .locale-content,
+html[lang="bn"] .locale-content,
+html[lang="ta"] .locale-content,
+html[lang="te"] .locale-content,
+html[lang="gu"] .locale-content,
+html[lang="kn"] .locale-content,
+html[lang="ml"] .locale-content,
+html[lang="pa"] .locale-content,
+html[lang="or"] .locale-content {
+  line-height: 1.8;
+}
+
+/* RTL Support (infrastructure for future languages) */
+html[dir="rtl"] {
+  direction: rtl;
+}
+
+html[dir="rtl"] .locale-content {
+  text-align: right;
+}
+
+/* Bidirectional text support */
+.bidi-isolate {
+  unicode-bidi: isolate;
+}
+
+.bidi-override {
+  unicode-bidi: bidi-override;
+}
+
+/* Language-specific text rendering optimizations */
+.indic-text {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Ensure proper word breaking for Indian languages */
+html:not([lang="en"]) .locale-content {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Story content prose styles */
+.story-content {
+  @apply text-foreground;
+}
+
+.story-content > *:first-child {
+  margin-top: 0;
+}
+
+.story-content > *:last-child {
+  margin-bottom: 0;
+}
+
+/* Smooth scrolling for story content */
+.story-content {
+  scroll-behavior: smooth;
+}
+
+/* Better image rendering in stories */
+.story-content figure {
+  break-inside: avoid;
+}
+
+/* Print styles for story content */
+@media print {
+  .story-content {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+  
+  .story-content figure {
+    page-break-inside: avoid;
+  }
+}
+
 ::view-transition-old(root), ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
+}
+
+/* ============================================
+   Landing Page Animations & Effects
+   ============================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Hero gradient background */
+.hero-gradient {
+  background: linear-gradient(135deg, 
+    oklch(0.98 0.01 250) 0%, 
+    oklch(0.95 0.03 250) 50%, 
+    oklch(0.92 0.05 250) 100%
+  );
+}
+
+.dark .hero-gradient {
+  background: linear-gradient(135deg, 
+    oklch(0.18 0.02 250) 0%, 
+    oklch(0.15 0.03 250) 50%, 
+    oklch(0.12 0.04 250) 100%
+  );
+}
+
+/* Glass effect for cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Feature card hover effect */
+.feature-card {
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(59, 130, 246, 0.15);
+}
+
+/* Step connector line */
+.step-connector {
+  position: relative;
+}
+
+.step-connector::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, var(--primary) 0%, transparent 100%);
+  transform: translateY(-50%);
 }

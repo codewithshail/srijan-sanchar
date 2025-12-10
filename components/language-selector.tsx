@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SUPPORTED_LANGUAGES } from "@/lib/ai/sarvam-tts";
+import { SUPPORTED_TTS_LANGUAGES as SUPPORTED_LANGUAGES } from "@/lib/ai/constants";
 import { Languages } from "lucide-react";
 
 interface LanguageSelectorProps {

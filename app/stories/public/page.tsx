@@ -1,15 +1,15 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import { BookOpen, Search, Filter, Eye, Headphones, Calendar, User } from "lucide-react";
+import { BookOpen, Search, Filter, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { ShareableStoryCard } from "@/components/shareable-story-card";
 
 type PublicStory = {
   id: string;
@@ -22,6 +22,8 @@ type PublicStory = {
   publishedAt: string;
   viewCount: number;
   listenCount: number;
+  likeCount: number;
+  shareCount: number;
   thumbnailImageUrl?: string;
   bannerImageUrl?: string;
 };
@@ -97,13 +99,16 @@ export default function PublicStoriesPage() {
                 <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
                     <div className="flex flex-wrap gap-2">
                         {/* Story Type Filter */}
-                        <Select value={storyTypeFilter} onValueChange={setStoryTypeFilter}>
+                        <Select value={storyTypeFilter || "all"} onValueChange={(val) => setStoryTypeFilter(val === "all" ? "" : val)}>
                             <SelectTrigger className="w-40">
-                                <Filter className="h-4 w-4" />
-                                <SelectValue placeholder="Story Type" />
+                                <Filter className="h-4 w-4 mr-2" />
+                                <SelectValue>
+                                    {storyTypeFilter === "life_story" ? "Life Stories" : 
+                                     storyTypeFilter === "blog_story" ? "Blog Stories" : "All Types"}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">All Types</SelectItem>
+                                <SelectItem value="all">All Types</SelectItem>
                                 <SelectItem value="life_story">Life Stories</SelectItem>
                                 <SelectItem value="blog_story">Blog Stories</SelectItem>
                             </SelectContent>
@@ -112,7 +117,11 @@ export default function PublicStoriesPage() {
                         {/* Sort By */}
                         <Select value={sortBy} onValueChange={setSortBy}>
                             <SelectTrigger className="w-40">
-                                <SelectValue placeholder="Sort by" />
+                                <SelectValue>
+                                    {sortBy === "newest" ? "Newest First" :
+                                     sortBy === "oldest" ? "Oldest First" :
+                                     sortBy === "mostViewed" ? "Most Viewed" : "Title A-Z"}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="newest">Newest First</SelectItem>
@@ -170,7 +179,23 @@ export default function PublicStoriesPage() {
             {!isLoading && (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {stories?.map(story => (
-                        <StoryCard key={story.id} story={story} />
+                        <ShareableStoryCard 
+                            key={story.id} 
+                            story={{
+                                id: story.id,
+                                title: story.title,
+                                storyType: story.storyType,
+                                summarySnippet: story.summarySnippet,
+                                thumbnailImageUrl: story.thumbnailImageUrl,
+                                bannerImageUrl: story.bannerImageUrl,
+                                authorName: story.authorName,
+                                publishedAt: story.publishedAt,
+                                viewCount: story.viewCount,
+                                listenCount: story.listenCount,
+                                likeCount: story.likeCount,
+                                shareCount: story.shareCount,
+                            }}
+                        />
                     ))}
                 </div>
             )}
@@ -197,75 +222,6 @@ export default function PublicStoriesPage() {
             )}
         </div>
     )
-}
-
-function StoryCard({ story }: { story: PublicStory }) {
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    return (
-        <Link href={`/story/${story.id}`}>
-            <Card className="h-full flex flex-col hover:border-primary transition-colors duration-200 group">
-                {/* Thumbnail Image */}
-                {story.thumbnailImageUrl && (
-                    <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-                        <img 
-                            src={story.thumbnailImageUrl} 
-                            alt={story.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                        />
-                    </div>
-                )}
-                
-                <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                        <Badge variant="outline" className="text-xs">
-                            {story.storyType === 'life_story' ? 'Life Story' : 'Blog Story'}
-                        </Badge>
-                    </div>
-                    <CardTitle className="flex items-start gap-2 text-lg leading-tight">
-                        <BookOpen className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                        <span className="line-clamp-2">{story.title}</span>
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-1 text-sm">
-                        <User className="h-3 w-3" />
-                        {story.authorName}
-                    </CardDescription>
-                </CardHeader>
-                
-                <CardContent className="flex-grow pb-4">
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
-                        {story.summarySnippet}
-                    </p>
-                    
-                    {/* Story Metadata */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1">
-                                <Eye className="h-3 w-3" />
-                                {story.viewCount}
-                            </div>
-                            {story.listenCount > 0 && (
-                                <div className="flex items-center gap-1">
-                                    <Headphones className="h-3 w-3" />
-                                    {story.listenCount}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(story.publishedAt)}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-        </Link>
-    );
 }
 
 function StorySkeleton() {

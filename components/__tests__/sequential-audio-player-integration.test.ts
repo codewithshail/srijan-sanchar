@@ -96,7 +96,7 @@ describe('WebAudioSequentialPlayer Integration', () => {
     ];
 
     // Track callbacks
-    let progressUpdates: number[] = [];
+    const progressUpdates: number[] = [];
     let completionCalled = false;
     let errorOccurred: Error | null = null;
 
@@ -195,7 +195,7 @@ describe('WebAudioSequentialPlayer Integration', () => {
 
   it('should handle errors gracefully', async () => {
     let errorReceived: Error | null = null;
-    player.onError((error) => {
+    player.onError((error: Error) => {
       errorReceived = error;
     });
 
@@ -206,12 +206,12 @@ describe('WebAudioSequentialPlayer Integration', () => {
     
     try {
       await player.loadChunks(chunks);
-    } catch (error) {
+    } catch {
       // Expected to throw
     }
 
     expect(errorReceived).toBeInstanceOf(Error);
-    expect(errorReceived?.message).toContain('Decode failed');
+    expect((errorReceived as Error | null)?.message).toContain('Decode failed');
   });
 
   it('should properly dispose resources', async () => {

@@ -4,7 +4,8 @@
  */
 
 export { geminiService, GeminiService } from "./gemini-service";
-export { imagenService, ImagenService } from "./imagen-service";
+export { imagenService, ImagenService, IMAGE_OPTIMIZATION_PRESETS } from "./imagen-service";
+export type { ImageOptimizationOptions, OptimizedImageResult } from "./imagen-service";
 export { sttService, STTService, SUPPORTED_STT_LANGUAGES } from "./stt-service";
 export { sarvamTTS, SarvamTTSService, SUPPORTED_LANGUAGES as SUPPORTED_TTS_LANGUAGES, AVAILABLE_SPEAKERS } from "./sarvam-tts";
 export { rateLimiter, RateLimiter } from "./rate-limiter";
@@ -15,6 +16,8 @@ export type {
   GenerationConfig,
   ImageGenerationRequest,
   ImageGenerationResult,
+  OptimizedImageResult as OptimizedImageResultType,
+  ImageGenerationJobConfig,
   TTSRequest,
   TTSResponse,
   STTRequest,

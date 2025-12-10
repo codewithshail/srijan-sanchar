@@ -1,112 +1,53 @@
 import { Job } from "bullmq";
 import { db } from "@/lib/db";
-import { generationJobs, stories, audioChapters } from "@/lib/db/schema";
+import { generationJobs, stories } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { sarvamTTS, type TTSRequest } from "@/lib/ai/sarvam-tts";
-import { cloudinaryService } from "@/lib/storage/cloudinary";
+import { audioChapterService, type AudioChapterConfig } from "@/lib/audio/audio-chapter-service";
 import { JobData, JobResult } from "../queue";
 
-export interface AudioGenerationConfig {
-  language?: string;
-  chapterDuration?: number; // in seconds
-  speaker?: string;
+export interface AudioGenerationConfig extends AudioChapterConfig {
+  /** Target duration per chapter in seconds */
+  chapterDuration?: number;
 }
 
 /**
- * Split text into chapters based on target duration
- * Assumes ~150 words per minute reading speed
+ * Progress stages for audio generation
  */
-function splitIntoChapters(
-  text: string,
-  targetDuration: number = 60
-): Array<{
-  text: string;
-  startPos: number;
-  endPos: number;
-  estimatedDuration: number;
-}> {
-  const wordsPerMinute = 150;
-  const wordsPerSecond = wordsPerMinute / 60;
-  const targetWords = Math.floor(targetDuration * wordsPerSecond);
-
-  // Split by paragraphs first
-  const paragraphs = text.split(/\n\n+/);
-  const chapters: Array<{
-    text: string;
-    startPos: number;
-    endPos: number;
-    estimatedDuration: number;
-  }> = [];
-
-  let currentChapter = "";
-  let currentWordCount = 0;
-  let startPos = 0;
-  let currentPos = 0;
-
-  for (const paragraph of paragraphs) {
-    const words = paragraph.trim().split(/\s+/);
-    const paragraphWordCount = words.length;
-
-    // If adding this paragraph exceeds target, save current chapter
-    if (currentWordCount + paragraphWordCount > targetWords && currentChapter) {
-      const estimatedDuration = Math.ceil(currentWordCount / wordsPerSecond);
-      chapters.push({
-        text: currentChapter.trim(),
-        startPos,
-        endPos: currentPos,
-        estimatedDuration,
-      });
-
-      currentChapter = paragraph + "\n\n";
-      currentWordCount = paragraphWordCount;
-      startPos = currentPos;
-    } else {
-      currentChapter += paragraph + "\n\n";
-      currentWordCount += paragraphWordCount;
-    }
-
-    currentPos += paragraph.length + 2; // +2 for \n\n
-  }
-
-  // Add remaining content as last chapter
-  if (currentChapter.trim()) {
-    const estimatedDuration = Math.ceil(currentWordCount / wordsPerSecond);
-    chapters.push({
-      text: currentChapter.trim(),
-      startPos,
-      endPos: currentPos,
-      estimatedDuration,
-    });
-  }
-
-  return chapters;
-}
+const PROGRESS_STAGES = {
+  INITIALIZING: { progress: 5, message: 'Initializing audio generation...' },
+  FETCHING_STORY: { progress: 10, message: 'Fetching story content...' },
+  SPLITTING_CHAPTERS: { progress: 15, message: 'Splitting into chapters...' },
+  GENERATING_AUDIO: { progress: 20, message: 'Generating audio...' },
+  SAVING: { progress: 95, message: 'Saving audio chapters...' },
+  COMPLETE: { progress: 100, message: 'Audio generation complete!' },
+};
 
 /**
- * Upload audio to Cloudinary storage
+ * Update job progress with message
  */
-async function uploadAudioToStorage(
-  audioData: ArrayBuffer,
-  storyId: string,
-  chapterIndex: number,
-  language: string
-): Promise<string> {
-  return await cloudinaryService.uploadAudio(
-    audioData,
-    storyId,
-    chapterIndex,
-    language
-  );
+async function updateProgress(
+  job: Job<JobData>,
+  stage: keyof typeof PROGRESS_STAGES,
+  customProgress?: number
+): Promise<void> {
+  const { progress, message } = PROGRESS_STAGES[stage];
+  const finalProgress = customProgress ?? progress;
+  await job.updateProgress({ progress: finalProgress, message, stage });
+  console.log(`[AUDIO_GENERATION] ${message} (${finalProgress}%)`);
 }
 
 /**
  * Process audio generation job
+ * Uses AudioChapterService for chapter splitting and audio generation
+ * 
+ * Requirements: 8.2, 8.3
  */
 export async function processAudioGeneration(
   job: Job<JobData>
 ): Promise<JobResult> {
   const { storyId, config } = job.data;
   const audioConfig = config as AudioGenerationConfig;
+  const startTime = Date.now();
 
   try {
     // Update job status in database
@@ -118,9 +59,9 @@ export async function processAudioGeneration(
       })
       .where(eq(generationJobs.id, job.id!));
 
-    await job.updateProgress(10);
+    await updateProgress(job, 'INITIALIZING');
 
-    // Fetch story
+    // Verify story exists
     const [story] = await db
       .select()
       .from(stories)
@@ -134,72 +75,36 @@ export async function processAudioGeneration(
       throw new Error("Story has no content to generate audio from");
     }
 
-    await job.updateProgress(20);
+    await updateProgress(job, 'FETCHING_STORY');
 
-    // Split story into chapters
-    const chapterDuration = audioConfig.chapterDuration || 60; // 1 minute default
-    const chapters = splitIntoChapters(story.content, chapterDuration);
+    // Prepare config for audio chapter service
+    const chapterConfig: AudioChapterConfig = {
+      targetDuration: audioConfig.chapterDuration || audioConfig.targetDuration || 60,
+      language: audioConfig.language || "en-IN",
+      speaker: audioConfig.speaker || "anushka",
+      pitch: audioConfig.pitch,
+      pace: audioConfig.pace,
+    };
 
-    await job.updateProgress(30);
-
-    // Generate audio for each chapter
-    const language = audioConfig.language || "en-IN";
-    const speaker = audioConfig.speaker || "anushka";
-    const generatedChapters = [];
-    const progressPerChapter = 60 / chapters.length;
-
-    for (let i = 0; i < chapters.length; i++) {
-      try {
-        // Generate audio using Sarvam TTS
-        const ttsRequest: TTSRequest = {
-          text: chapters[i].text,
-          language,
-          speaker,
-        };
-
-        const result = await sarvamTTS.generateAudio(ttsRequest);
-
-        if (result.error || !result.audioData) {
-          throw new Error(result.error || "No audio data received");
-        }
-
-        // Upload to storage
-        const audioUrl = await uploadAudioToStorage(
-          result.audioData,
-          storyId,
-          i,
-          language
-        );
-
-        // Save chapter metadata to database
-        await db.insert(audioChapters).values({
-          storyId,
-          chapterIndex: i,
-          language,
-          audioUrl,
-          duration: chapters[i].estimatedDuration,
-          startPosition: chapters[i].startPos,
-          endPosition: chapters[i].endPos,
-        });
-
-        generatedChapters.push({
-          chapterIndex: i,
-          audioUrl,
-          duration: chapters[i].estimatedDuration,
-        });
-
-        await job.updateProgress(30 + (i + 1) * progressPerChapter);
-      } catch (error) {
-        console.error(`Failed to generate audio for chapter ${i}:`, error);
-        // Continue with other chapters even if one fails
+    // Generate all chapters using the audio chapter service
+    const result = await audioChapterService.generateAllChapters(
+      storyId,
+      chapterConfig,
+      async (progress, message) => {
+        // Map service progress to job progress (20-95 range)
+        const mappedProgress = 20 + Math.round((progress / 100) * 75);
+        await job.updateProgress({ progress: mappedProgress, message, stage: 'GENERATING_AUDIO' });
+        console.log(`[AUDIO_GENERATION] ${message} (${mappedProgress}%)`);
       }
-    }
+    );
 
-    if (generatedChapters.length === 0) {
+    await updateProgress(job, 'SAVING');
+
+    const duration = Date.now() - startTime;
+
+    if (!result.success || result.chapters.length === 0) {
       throw new Error("Failed to generate any audio chapters");
     }
-
-    await job.updateProgress(90);
 
     // Update job status in database
     await db
@@ -207,32 +112,51 @@ export async function processAudioGeneration(
       .set({
         status: "completed",
         result: {
-          chaptersGenerated: generatedChapters.length,
-          totalChapters: chapters.length,
-          language,
+          chaptersGenerated: result.chapters.length,
+          totalChapters: result.chapters.length + result.failedChapters.length,
+          failedChapters: result.failedChapters.length,
+          failures: result.failedChapters,
+          language: result.language,
+          speaker: result.speaker,
+          totalAudioDuration: result.totalDuration,
+          processingDuration: duration,
         },
         updatedAt: new Date(),
       })
       .where(eq(generationJobs.id, job.id!));
 
-    await job.updateProgress(100);
+    await updateProgress(job, 'COMPLETE');
+
+    console.log(`[AUDIO_GENERATION] Job completed for story ${storyId} in ${duration}ms`);
 
     return {
       success: true,
       data: {
         storyId,
-        chaptersGenerated: generatedChapters.length,
-        totalChapters: chapters.length,
-        language,
+        chaptersGenerated: result.chapters.length,
+        totalChapters: result.chapters.length + result.failedChapters.length,
+        failedChapters: result.failedChapters.length,
+        language: result.language,
+        speaker: result.speaker,
+        totalAudioDuration: result.totalDuration,
       },
+      duration,
     };
   } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error(`[AUDIO_GENERATION] Job failed for story ${storyId} after ${duration}ms:`, error);
+
     // Update job status in database
     await db
       .update(generationJobs)
       .set({
         status: "failed",
         error: error instanceof Error ? error.message : "Unknown error",
+        result: {
+          duration,
+          attemptsMade: job.attemptsMade,
+          maxAttempts: job.opts.attempts || 3,
+        },
         updatedAt: new Date(),
       })
       .where(eq(generationJobs.id, job.id!));

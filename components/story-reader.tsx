@@ -15,10 +15,12 @@ import {
   Headphones, 
   User,
   Clock,
-  ArrowLeft
+  ArrowLeft,
+  Heart
 } from "lucide-react";
+import { LikeButton } from "@/components/like-button";
 import Image from "next/image";
-import { SUPPORTED_LANGUAGES } from "@/lib/ai/sarvam-tts";
+import { SUPPORTED_TTS_LANGUAGES as SUPPORTED_LANGUAGES } from "@/lib/ai/constants";
 import { AudioPlayer } from "@/components/audio-player";
 import { SequentialAudioPlayer } from "@/components/sequential-audio-player";
 import { useStreamingTTS } from "@/hooks/use-streaming-tts";
@@ -28,6 +30,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CommentsSection } from "@/components/comments-section";
 
 type StoryImage = { url: string; prompt: string };
 type StorySummary = {
@@ -53,6 +56,7 @@ type FullStory = {
   listenCount: number;
   owner: {
     id: string;
+    clerkId: string;
     firstName: string | null;
     lastName: string | null;
   };
@@ -352,6 +356,11 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3">
+            {/* Like Button - Show for published stories */}
+            {story.status === "published" && (
+              <LikeButton storyId={story.id} variant="outline" />
+            )}
+
             {isOwner && (
               <Button onClick={() => window.location.href = `/publish/${story.id}`}>
                 <Share2 className="mr-2 h-4 w-4" />
@@ -498,12 +507,12 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
         <Separator className="mb-8" />
 
         {/* Story Content */}
-        <div className="prose dark:prose-invert max-w-none mb-12">
+        <div className="prose dark:prose-invert max-w-none mb-12 locale-content indic-text">
           {story.storyType === 'blog_story' ? (
             // Blog story content
             story.content ? (
               <div 
-                className="text-lg leading-relaxed"
+                className="text-lg leading-relaxed locale-content"
                 dangerouslySetInnerHTML={{ __html: story.content }}
               />
             ) : (
@@ -556,6 +565,17 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
             )
           )}
         </div>
+
+        {/* Comments Section - Only show for published stories */}
+        {story.status === "published" && (
+          <section className="mt-12">
+            <Separator className="mb-8" />
+            <CommentsSection
+              storyId={story.id}
+              storyOwnerId={story.owner.clerkId}
+            />
+          </section>
+        )}
 
         {/* Related Stories */}
         {relatedStories && relatedStories.length > 0 && (

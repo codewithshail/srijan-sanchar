@@ -1,4 +1,7 @@
+"use client";
+
 import { Card, CardContent } from "@/components/ui/card";
+import { useTranslations } from "next-intl";
 import {
   Sparkles,
   Mic,
@@ -7,78 +10,90 @@ import {
   BookOpen,
   BookMarked,
   Printer,
-  Share2,
+  Languages,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 interface Feature {
   icon: LucideIcon;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
+  gradient: string;
 }
 
 const features: Feature[] = [
   {
     icon: Sparkles,
-    title: "AI Writing Assistant",
-    description:
-      "Get intelligent suggestions, grammar improvements, content expansion, and translations in multiple Indian languages as you write.",
+    titleKey: "aiWriting",
+    descriptionKey: "aiWritingDesc",
+    gradient: "from-blue-500 to-cyan-500",
   },
   {
     icon: Mic,
-    title: "Voice Input",
-    description:
-      "Speak your story naturally with high-accuracy speech-to-text supporting all major Indian languages. Perfect for capturing memories on the go.",
+    titleKey: "voiceInput",
+    descriptionKey: "voiceInputDesc",
+    gradient: "from-violet-500 to-purple-500",
   },
   {
     icon: Globe,
-    title: "Publish & Share",
-    description:
-      "Share your stories with the world. Publish online with beautiful formatting, AI-generated images, and easy social media sharing.",
+    titleKey: "publishShare",
+    descriptionKey: "publishShareDesc",
+    gradient: "from-emerald-500 to-teal-500",
   },
   {
     icon: Headphones,
-    title: "Audio Narration",
-    description:
-      "Convert your stories to natural-sounding audio in multiple languages. Listen anywhere with chapter-based navigation.",
+    titleKey: "audioNarration",
+    descriptionKey: "audioNarrationDesc",
+    gradient: "from-orange-500 to-amber-500",
   },
   {
     icon: BookOpen,
-    title: "AI-Generated Images",
-    description:
-      "Enhance your stories with contextual AI-generated images that bring your narrative to life with stunning visuals.",
+    titleKey: "aiImages",
+    descriptionKey: "aiImagesDesc",
+    gradient: "from-pink-500 to-rose-500",
   },
   {
     icon: BookMarked,
-    title: "Create eBooks",
-    description:
-      "Transform your stories into professionally formatted eBooks with customizable layouts, fonts, and styling options.",
+    titleKey: "createEbooks",
+    descriptionKey: "createEbooksDesc",
+    gradient: "from-indigo-500 to-blue-500",
   },
   {
     icon: Printer,
-    title: "Print on Demand",
-    description:
-      "Order beautiful hardcover or paperback books of your stories. Perfect for gifting or keeping as treasured memories.",
+    titleKey: "printOnDemand",
+    descriptionKey: "printOnDemandDesc",
+    gradient: "from-slate-600 to-slate-800",
   },
   {
-    icon: Share2,
-    title: "Multi-Language Support",
-    description:
-      "Write and read in Hindi, Bengali, Tamil, Telugu, Marathi, Gujarati, and 5+ other Indian languages.",
+    icon: Languages,
+    titleKey: "multiLanguage",
+    descriptionKey: "multiLanguageDesc",
+    gradient: "from-cyan-500 to-blue-500",
   },
 ];
 
 export function FeaturesSection() {
+  const t = useTranslations("landing.features");
+  const tLanding = useTranslations("landing");
+
   return (
-    <section className="py-16 sm:py-20 md:py-24 bg-background">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-            Everything You Need to Tell Your Story
+    <section className="py-20 sm:py-24 md:py-32 bg-background relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="text-center mb-16 sm:mb-20">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+            {tLanding("featuresLabel")}
+          </span>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-foreground">
+            {tLanding("featuresTitle")}
           </h2>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
-            Powerful features to help you write, publish, and share your stories
-            with the world
+            {tLanding("featuresSubtitle")}
           </p>
         </div>
 
@@ -87,17 +102,19 @@ export function FeaturesSection() {
             const Icon = feature.icon;
             return (
               <Card
-                key={feature.title}
-                className="border-2 hover:border-primary/50 transition-colors"
+                key={feature.titleKey}
+                className="feature-card border-0 shadow-lg hover:shadow-xl bg-white dark:bg-card"
               >
-                <CardContent className="pt-6">
-                  <div className="rounded-full bg-primary/10 w-12 h-12 flex items-center justify-center mb-4">
-                    <Icon className="h-6 w-6 text-primary" />
+                <CardContent className="pt-8 pb-6 px-6">
+                  <div className={`rounded-2xl bg-gradient-to-br ${feature.gradient} w-14 h-14 flex items-center justify-center mb-5 shadow-lg`}>
+                    <Icon className="h-7 w-7 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    {feature.title}
+                  <h3 className="text-xl font-semibold mb-3 text-foreground">
+                    {t(feature.titleKey)}
                   </h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {t(feature.descriptionKey)}
+                  </p>
                 </CardContent>
               </Card>
             );

@@ -5,6 +5,12 @@ import { generationJobs } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { JobQueue, JobType } from '@/lib/jobs';
 
+interface JobProgressInfo {
+  progress: number;
+  message?: string;
+  stage?: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
@@ -28,38 +34,63 @@ export async function GET(
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    // Get real-time status from queue
+    // Get detailed job information from queue
     try {
-      const queueStatus = await JobQueue.getJobStatus(
+      const jobDetails = await JobQueue.getJobDetails(
         job.jobType as JobType,
         jobId
       );
 
-      return NextResponse.json({
-        jobId,
-        storyId: job.storyId,
-        jobType: job.jobType,
-        status: queueStatus.status,
-        progress: queueStatus.progress || 0,
-        result: queueStatus.result || job.result,
-        error: queueStatus.error || job.error,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt,
-      });
+      if (jobDetails) {
+        // Parse progress info if it's an object
+        let progressInfo: JobProgressInfo = { progress: 0 };
+        if (typeof jobDetails.progress === 'number') {
+          progressInfo = { progress: jobDetails.progress };
+        } else if (typeof jobDetails.progress === 'object') {
+          progressInfo = jobDetails.progress as JobProgressInfo;
+        }
+
+        return NextResponse.json({
+          jobId,
+          storyId: job.storyId,
+          jobType: job.jobType,
+          status: jobDetails.status,
+          progress: progressInfo.progress || 0,
+          progressMessage: progressInfo.message,
+          progressStage: progressInfo.stage,
+          attemptsMade: jobDetails.attemptsMade,
+          maxAttempts: jobDetails.maxAttempts,
+          result: jobDetails.result || job.result,
+          error: jobDetails.error || job.error,
+          processedOn: jobDetails.processedOn,
+          finishedOn: jobDetails.finishedOn,
+          createdAt: job.createdAt,
+          updatedAt: job.updatedAt,
+        });
+      }
     } catch (queueError) {
-      // If job not in queue, return database status
-      return NextResponse.json({
-        jobId,
-        storyId: job.storyId,
-        jobType: job.jobType,
-        status: job.status,
-        progress: 0,
-        result: job.result,
-        error: job.error,
-        createdAt: job.createdAt,
-        updatedAt: job.updatedAt,
-      });
+      // Queue error - fall through to database status
+      console.warn('Queue status fetch failed:', queueError);
     }
+
+    // If job not in queue or queue error, return database status
+    // Parse result for progress info if available
+    const result = job.result as Record<string, unknown> | null;
+    
+    return NextResponse.json({
+      jobId,
+      storyId: job.storyId,
+      jobType: job.jobType,
+      status: job.status,
+      progress: job.status === 'completed' ? 100 : (job.status === 'failed' ? 0 : 0),
+      progressMessage: job.status === 'completed' ? 'Complete' : (job.status === 'failed' ? 'Failed' : 'Pending'),
+      attemptsMade: result?.attemptsMade as number || 0,
+      maxAttempts: result?.maxAttempts as number || 3,
+      result: job.result,
+      error: job.error,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    });
   } catch (error) {
     console.error('Error fetching job status:', error);
     return NextResponse.json(

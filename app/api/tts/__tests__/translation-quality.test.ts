@@ -28,7 +28,7 @@ describe('Translation Quality Tests', () => {
       const targetLanguage = "Hindi";
       
       // The new prompt should be much more specific
-      const expectedPromptPattern = /You are a professional translator.*Translate EVERY sentence.*Do NOT summarize/s;
+      const expectedPromptPattern = new RegExp('You are a professional translator.*Translate EVERY sentence.*Do NOT summarize', 's');
       
       // This would be called in the actual implementation
       const prompt = `You are a professional translator. Translate the following English text to ${targetLanguage} with these requirements:

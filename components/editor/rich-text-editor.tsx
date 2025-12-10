@@ -171,7 +171,7 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          "prose prose-sm sm:prose max-w-none min-h-[400px] focus:outline-none px-3 py-2 rounded-md border bg-background focus:ring-2 focus:ring-ring focus:ring-offset-2",
+          "prose prose-sm sm:prose max-w-none min-h-[400px] focus:outline-none px-3 py-2 rounded-md border bg-background focus:ring-2 focus:ring-ring focus:ring-offset-2 locale-content indic-text",
       },
     },
     onUpdate: ({ editor }) => {

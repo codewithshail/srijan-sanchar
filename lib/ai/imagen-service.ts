@@ -1,10 +1,67 @@
 /**
  * Google Imagen-4 AI Image Generation Service
- * Generates contextual images for stories
+ * Generates contextual images for stories with optimization for web and print
  */
 
 import { rateLimiter } from "./rate-limiter";
 import { AIServiceError, ImageGenerationRequest, ImageGenerationResult } from "./types";
+
+/**
+ * Image optimization settings for different use cases
+ */
+export interface ImageOptimizationOptions {
+  /** Target use case: 'web' for online viewing, 'print' for physical printing */
+  target: 'web' | 'print';
+  /** Maximum width in pixels */
+  maxWidth?: number;
+  /** Maximum height in pixels */
+  maxHeight?: number;
+  /** Quality level (1-100) */
+  quality?: number;
+  /** Output format */
+  format?: 'jpeg' | 'png' | 'webp';
+}
+
+/**
+ * Extended image generation result with optimization metadata
+ */
+export interface OptimizedImageResult extends ImageGenerationResult {
+  /** URL of the optimized image (if uploaded) */
+  url?: string;
+  /** Optimization settings applied */
+  optimization?: ImageOptimizationOptions;
+  /** Whether this is a fallback/placeholder image */
+  isFallback?: boolean;
+  /** Error message if generation failed */
+  error?: string;
+}
+
+/**
+ * Default optimization presets
+ */
+export const IMAGE_OPTIMIZATION_PRESETS = {
+  web: {
+    target: 'web' as const,
+    maxWidth: 1200,
+    maxHeight: 800,
+    quality: 85,
+    format: 'webp' as const,
+  },
+  print: {
+    target: 'print' as const,
+    maxWidth: 3000,
+    maxHeight: 2000,
+    quality: 100,
+    format: 'png' as const,
+  },
+  thumbnail: {
+    target: 'web' as const,
+    maxWidth: 400,
+    maxHeight: 300,
+    quality: 80,
+    format: 'webp' as const,
+  },
+};
 
 export class ImagenService {
   private apiKey: string;
@@ -188,6 +245,107 @@ export class ImagenService {
   }
 
   /**
+   * Generate images with optimization for web or print
+   */
+  async generateOptimizedImages(
+    prompts: string[],
+    style: string = "realistic",
+    optimization: ImageOptimizationOptions = IMAGE_OPTIMIZATION_PRESETS.web
+  ): Promise<OptimizedImageResult[]> {
+    const results: OptimizedImageResult[] = [];
+
+    for (let i = 0; i < prompts.length; i++) {
+      try {
+        const result = await this.generateImageWithFallback(
+          prompts[i],
+          style,
+          optimization.target === 'print' ? '4:3' : '16:9'
+        );
+
+        results.push({
+          ...result,
+          optimization,
+          isFallback: !result.imageBytes,
+        });
+      } catch (error) {
+        console.error(`[IMAGEN_SERVICE] Failed to generate optimized image ${i}:`, error);
+        results.push({
+          imageBytes: "",
+          prompt: prompts[i],
+          index: i,
+          optimization,
+          isFallback: true,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Generate a single image with automatic fallback on failure
+   */
+  async generateImageWithFallback(
+    prompt: string,
+    style: string = "realistic",
+    aspectRatio: string = "16:9"
+  ): Promise<OptimizedImageResult> {
+    if (!this.isConfigured()) {
+      console.log("[IMAGEN_SERVICE] Not configured, returning fallback");
+      return this.createFallbackResult(prompt, 0, "Service not configured");
+    }
+
+    const allowed = await rateLimiter.checkLimit("imagen");
+    if (!allowed) {
+      console.log("[IMAGEN_SERVICE] Rate limited, returning fallback");
+      return this.createFallbackResult(prompt, 0, "Rate limit exceeded");
+    }
+
+    try {
+      const imageBytes = await this.generateSingleImage({
+        prompt: this.enhancePrompt(prompt, style),
+        style,
+        aspectRatio,
+        numberOfImages: 1,
+      });
+
+      await rateLimiter.recordRequest("imagen");
+
+      return {
+        imageBytes,
+        prompt,
+        index: 0,
+        isFallback: false,
+      };
+    } catch (error) {
+      console.error("[IMAGEN_SERVICE] Generation failed, using fallback:", error);
+      return this.createFallbackResult(
+        prompt, 
+        0, 
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+  }
+
+  /**
+   * Create a fallback result when image generation fails
+   */
+  private createFallbackResult(
+    prompt: string,
+    index: number,
+    error: string
+  ): OptimizedImageResult {
+    return {
+      imageBytes: "",
+      prompt,
+      index,
+      isFallback: true,
+      error,
+    };
+  }
+
+  /**
    * Get fallback placeholder images
    */
   private getFallbackImages(prompts: string[]): ImageGenerationResult[] {
@@ -196,6 +354,45 @@ export class ImagenService {
       prompt,
       index,
     }));
+  }
+
+  /**
+   * Generate placeholder image URL for fallback scenarios
+   * Uses a placeholder service to generate contextual placeholder images
+   */
+  getPlaceholderImageUrl(
+    prompt: string,
+    width: number = 1200,
+    height: number = 800
+  ): string {
+    // Use a placeholder service with the prompt as text
+    const encodedText = encodeURIComponent(prompt.substring(0, 50));
+    return `https://placehold.co/${width}x${height}/e2e8f0/64748b?text=${encodedText}`;
+  }
+
+  /**
+   * Validate image bytes (basic validation)
+   */
+  validateImageBytes(imageBytes: string): boolean {
+    if (!imageBytes || imageBytes.length === 0) {
+      return false;
+    }
+    
+    // Check if it's valid base64
+    try {
+      const decoded = Buffer.from(imageBytes, 'base64');
+      // Check for common image magic bytes
+      const pngMagic = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+      const jpegMagic = Buffer.from([0xff, 0xd8, 0xff]);
+      
+      return (
+        decoded.subarray(0, 4).equals(pngMagic) ||
+        decoded.subarray(0, 3).equals(jpegMagic) ||
+        decoded.length > 1000 // Assume valid if large enough
+      );
+    } catch {
+      return false;
+    }
   }
 
 

@@ -34,6 +34,7 @@ export async function GET() {
             .select({
                 totalViews: sql<number>`COALESCE(SUM(${stories.viewCount}), 0)`,
                 totalListens: sql<number>`COALESCE(SUM(${stories.listenCount}), 0)`,
+                totalShares: sql<number>`COALESCE(SUM(${stories.shareCount}), 0)`,
                 publishedCount: sql<number>`COUNT(CASE WHEN ${stories.status} = 'published' THEN 1 END)`,
                 totalStories: sql<number>`COUNT(*)`,
             })

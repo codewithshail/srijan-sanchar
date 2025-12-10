@@ -2,32 +2,14 @@ import { z } from "zod";
 import { intelligentTextChunker } from "../text-chunking/intelligent-text-chunker";
 import { rateLimiter } from "./rate-limiter";
 import { AIServiceError } from "./types";
+import { SUPPORTED_TTS_LANGUAGES, AVAILABLE_SPEAKERS } from "./constants";
+
+// Re-export for backward compatibility
+export { AVAILABLE_SPEAKERS } from "./constants";
+export const SUPPORTED_LANGUAGES = SUPPORTED_TTS_LANGUAGES;
 
 // Sarvam AI Bulbul TTS API configuration
 const SARVAM_BASE_URL = "https://api.sarvam.ai/text-to-speech";
-
-// Supported languages for Sarvam AI Bulbul v2
-export const SUPPORTED_LANGUAGES = [
-  { code: "en-IN", name: "English", nativeName: "English" },
-  { code: "hi-IN", name: "Hindi", nativeName: "हिंदी" },
-  { code: "bn-IN", name: "Bengali", nativeName: "বাংলা" },
-  { code: "ta-IN", name: "Tamil", nativeName: "தமிழ்" },
-  { code: "te-IN", name: "Telugu", nativeName: "తెలుగు" },
-  { code: "gu-IN", name: "Gujarati", nativeName: "ગુજરાતી" },
-  { code: "kn-IN", name: "Kannada", nativeName: "ಕನ್ನಡ" },
-  { code: "ml-IN", name: "Malayalam", nativeName: "മലയാളം" },
-  { code: "mr-IN", name: "Marathi", nativeName: "मराठी" },
-  { code: "pa-IN", name: "Punjabi", nativeName: "ਪੰਜਾਬੀ" },
-  { code: "or-IN", name: "Odia", nativeName: "ଓଡ଼ିଆ" },
-];
-
-// Available speakers for Sarvam AI Bulbul v2
-export const AVAILABLE_SPEAKERS = [
-  { id: "anushka", name: "Anushka", gender: "female" },
-  { id: "meera", name: "Meera", gender: "female" },
-  { id: "arjun", name: "Arjun", gender: "male" },
-  { id: "kavya", name: "Kavya", gender: "female" },
-];
 
 export interface TTSRequest {
   text: string;

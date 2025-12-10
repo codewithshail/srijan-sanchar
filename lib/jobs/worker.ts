@@ -1,15 +1,55 @@
 import { Worker, Job } from 'bullmq';
-import { connection, JobData, JobResult } from './queue';
+import { connection, JobData, JobResult, JobType } from './queue';
 import { processStoryGeneration } from './processors/story-generation';
 import { processImageGeneration } from './processors/image-generation';
 import { processAudioGeneration } from './processors/audio-generation';
+import { sendJobNotification, NotificationPayload } from './notifications';
+
+/**
+ * Send notification for completed/failed job
+ */
+async function notifyJobCompletion(
+  job: Job<JobData, JobResult>,
+  jobType: JobType,
+  status: 'completed' | 'failed',
+  result?: JobResult,
+  error?: string
+): Promise<void> {
+  try {
+    const payload: NotificationPayload = {
+      userId: '', // Will be resolved from story
+      storyId: job.data.storyId,
+      jobId: job.id!,
+      jobType: jobType as NotificationPayload['jobType'],
+      status,
+      result: result?.data as Record<string, unknown>,
+      error: error || result?.error,
+    };
+
+    await sendJobNotification(payload);
+  } catch (notifyError) {
+    console.error(`[WORKER] Failed to send notification for job ${job.id}:`, notifyError);
+    // Don't throw - notification failure shouldn't affect job status
+  }
+}
 
 // Story Generation Worker
 export const storyGenerationWorker = new Worker<JobData, JobResult>(
   'story-generation',
   async (job: Job<JobData>) => {
-    console.log(`Processing story generation job ${job.id} for story ${job.data.storyId}`);
-    return await processStoryGeneration(job);
+    console.log(`[WORKER] Processing story generation job ${job.id} for story ${job.data.storyId}`);
+    const startTime = Date.now();
+    
+    try {
+      const result = await processStoryGeneration(job);
+      const duration = Date.now() - startTime;
+      console.log(`[WORKER] Story generation job ${job.id} completed in ${duration}ms`);
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[WORKER] Story generation job ${job.id} failed after ${duration}ms:`, error);
+      throw error;
+    }
   },
   {
     connection,
@@ -25,8 +65,19 @@ export const storyGenerationWorker = new Worker<JobData, JobResult>(
 export const imageGenerationWorker = new Worker<JobData, JobResult>(
   'image-generation',
   async (job: Job<JobData>) => {
-    console.log(`Processing image generation job ${job.id} for story ${job.data.storyId}`);
-    return await processImageGeneration(job);
+    console.log(`[WORKER] Processing image generation job ${job.id} for story ${job.data.storyId}`);
+    const startTime = Date.now();
+    
+    try {
+      const result = await processImageGeneration(job);
+      const duration = Date.now() - startTime;
+      console.log(`[WORKER] Image generation job ${job.id} completed in ${duration}ms`);
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[WORKER] Image generation job ${job.id} failed after ${duration}ms:`, error);
+      throw error;
+    }
   },
   {
     connection,
@@ -42,8 +93,19 @@ export const imageGenerationWorker = new Worker<JobData, JobResult>(
 export const audioGenerationWorker = new Worker<JobData, JobResult>(
   'audio-generation',
   async (job: Job<JobData>) => {
-    console.log(`Processing audio generation job ${job.id} for story ${job.data.storyId}`);
-    return await processAudioGeneration(job);
+    console.log(`[WORKER] Processing audio generation job ${job.id} for story ${job.data.storyId}`);
+    const startTime = Date.now();
+    
+    try {
+      const result = await processAudioGeneration(job);
+      const duration = Date.now() - startTime;
+      console.log(`[WORKER] Audio generation job ${job.id} completed in ${duration}ms`);
+      return result;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[WORKER] Audio generation job ${job.id} failed after ${duration}ms:`, error);
+      throw error;
+    }
   },
   {
     connection,
@@ -55,20 +117,51 @@ export const audioGenerationWorker = new Worker<JobData, JobResult>(
   }
 );
 
+// Map workers to their job types
+const workerJobTypes: Map<Worker<JobData, JobResult>, JobType> = new Map([
+  [storyGenerationWorker, JobType.STORY_GENERATION],
+  [imageGenerationWorker, JobType.IMAGE_GENERATION],
+  [audioGenerationWorker, JobType.AUDIO_GENERATION],
+]);
+
 // Event handlers for all workers
 const workers = [storyGenerationWorker, imageGenerationWorker, audioGenerationWorker];
 
 workers.forEach((worker) => {
-  worker.on('completed', (job: Job<JobData, JobResult>) => {
-    console.log(`Job ${job.id} completed successfully`);
+  const jobType = workerJobTypes.get(worker)!;
+
+  worker.on('completed', async (job: Job<JobData, JobResult>, result: JobResult) => {
+    console.log(`[WORKER] Job ${job.id} (${jobType}) completed successfully`);
+    
+    // Send completion notification
+    await notifyJobCompletion(job, jobType, 'completed', result);
   });
 
-  worker.on('failed', (job: Job<JobData> | undefined, err: Error) => {
-    console.error(`Job ${job?.id} failed:`, err.message);
+  worker.on('failed', async (job: Job<JobData> | undefined, err: Error) => {
+    console.error(`[WORKER] Job ${job?.id} (${jobType}) failed:`, err.message);
+    
+    // Send failure notification (only on final failure, not retries)
+    if (job && job.attemptsMade >= (job.opts.attempts || 3)) {
+      await notifyJobCompletion(job, jobType, 'failed', undefined, err.message);
+    }
   });
 
   worker.on('error', (err: Error) => {
-    console.error('Worker error:', err);
+    console.error(`[WORKER] Worker error (${jobType}):`, err);
+  });
+
+  worker.on('progress', (job, progress) => {
+    let progressValue = 0;
+    if (typeof progress === 'number') {
+      progressValue = progress;
+    } else if (typeof progress === 'object' && progress !== null) {
+      progressValue = (progress as Record<string, unknown>).progress as number || 0;
+    }
+    console.log(`[WORKER] Job ${job.id} (${jobType}) progress: ${progressValue}%`);
+  });
+
+  worker.on('stalled', (jobId: string) => {
+    console.warn(`[WORKER] Job ${jobId} (${jobType}) stalled - will be retried`);
   });
 });
 

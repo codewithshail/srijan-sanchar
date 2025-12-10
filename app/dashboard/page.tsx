@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, LoadingButton } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -31,12 +31,13 @@ import {
   MessageSquare,
   Heart,
   Package,
-  TrendingUp,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AnalyticsDashboard } from "@/components/analytics-dashboard";
+import { PrintOrderDialog } from "@/components/print-order-dialog";
+import { UserOrderHistory } from "@/components/user-order-history";
 
 type Story = {
   id: string;
@@ -73,22 +74,7 @@ type UserAppointment = {
   };
 };
 
-type PrintOrder = {
-  id: string;
-  storyId: string;
-  storyTitle: string | null;
-  orderStatus: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
-  bookSize: string;
-  coverType: string;
-  quantity: number;
-  totalAmount: number;
-  trackingNumber?: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export default function DashboardPage() {
-  const router = useRouter();
   const qc = useQueryClient();
   
   const { data: stats, isLoading: isLoadingStats } = useQuery<DashboardStats>({
@@ -114,15 +100,6 @@ export default function DashboardPage() {
     queryFn: async () => {
       const res = await fetch("/api/appointments/user");
       if (!res.ok) throw new Error("Failed to fetch appointments");
-      return res.json();
-    },
-  });
-
-  const { data: printOrders, isLoading: isLoadingPrintOrders } = useQuery<PrintOrder[]>({
-    queryKey: ["printOrders"],
-    queryFn: async () => {
-      const res = await fetch("/api/print-orders");
-      if (!res.ok) throw new Error("Failed to fetch print orders");
       return res.json();
     },
   });
@@ -261,8 +238,9 @@ export default function DashboardPage() {
       </div>
 
       <Tabs defaultValue="stories" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
           <TabsTrigger value="stories">Stories</TabsTrigger>
+          <TabsTrigger value="liked">Liked</TabsTrigger>
           <TabsTrigger value="appointments">Expert Sessions</TabsTrigger>
           <TabsTrigger value="print-orders">Print Orders</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -331,11 +309,33 @@ export default function DashboardPage() {
                       <Edit3 className="mr-2 h-4 w-4" /> Rename
                     </DropdownMenuItem>
                     {story.status === "published" && (
-                      <Link href={`/analytics/${story.id}`}>
-                        <DropdownMenuItem>
-                          <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+                      <>
+                        <Link href={`/analytics/${story.id}`}>
+                          <DropdownMenuItem>
+                            <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+                          </DropdownMenuItem>
+                        </Link>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const url = `${window.location.origin}/story/${story.id}`;
+                            navigator.clipboard.writeText(url);
+                            toast.success("Story link copied to clipboard!");
+                          }}
+                        >
+                          <Share2 className="mr-2 h-4 w-4" /> Share Story
                         </DropdownMenuItem>
-                      </Link>
+                      </>
+                    )}
+                    {(story.status === "completed" || story.status === "published") && (
+                      <PrintOrderDialog
+                        storyId={story.id}
+                        storyTitle={story.title || "Untitled Story"}
+                        trigger={
+                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                            <Package className="mr-2 h-4 w-4" /> Order Print Copy
+                          </DropdownMenuItem>
+                        }
+                      />
                     )}
                     <DropdownMenuItem
                       onClick={() => unpublishMutation.mutate(story.id)}
@@ -361,7 +361,7 @@ export default function DashboardPage() {
                       story.status === "draft"
                         ? story.storyType === "blog_story" 
                           ? `/blog-editor/${story.id}`
-                          : `/wizard/${story.id}`
+                          : `/life-story/${story.id}`
                         : `/story/${story.id}`
                     }
                   >
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                     href={
                       story.storyType === "blog_story" 
                         ? `/blog-editor/${story.id}` 
-                        : `/editor/${story.id}`
+                        : `/life-story/${story.id}`
                     }
                   >
                     <Button variant="outline" className="w-full">Editor</Button>
@@ -397,6 +397,26 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        </TabsContent>
+
+        <TabsContent value="liked" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Liked Stories</h2>
+              <p className="text-sm text-muted-foreground">Stories you've shown love to</p>
+            </div>
+            <Link href="/stories/liked">
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </Link>
+          </div>
+          <div className="text-center py-8">
+            <Heart className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">
+              Visit the <Link href="/stories/liked" className="text-primary hover:underline">Liked Stories</Link> page to see all stories you've liked.
+            </p>
+          </div>
         </TabsContent>
 
         <TabsContent value="appointments" className="space-y-6">
@@ -481,78 +501,18 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="print-orders" className="space-y-6">
-          {isLoadingPrintOrders && <p>Loading your print orders...</p>}
-          
-          {!isLoadingPrintOrders && printOrders?.length === 0 && (
-            <div className="text-center py-12">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h2 className="text-2xl font-semibold">No Print Orders Yet</h2>
-              <p className="text-muted-foreground mt-2">
-                Order a printed copy of your story to have a physical keepsake.
-              </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Print Orders</h2>
+              <p className="text-sm text-muted-foreground">Track your print-on-demand orders</p>
             </div>
-          )}
-
-          <div className="space-y-4">
-            {printOrders?.map((order) => (
-              <Card key={order.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">
-                        {order.storyTitle || "Untitled Story"}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        Order #{order.id.slice(0, 8)}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={
-                      order.orderStatus === "delivered" ? "default" :
-                      order.orderStatus === "shipped" ? "default" :
-                      order.orderStatus === "processing" ? "secondary" :
-                      order.orderStatus === "paid" ? "secondary" :
-                      order.orderStatus === "cancelled" ? "destructive" :
-                      "outline"
-                    }>
-                      {order.orderStatus.charAt(0).toUpperCase() + order.orderStatus.slice(1)}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Book Size:</span>
-                      <p className="font-medium">{order.bookSize}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Cover Type:</span>
-                      <p className="font-medium capitalize">{order.coverType}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Quantity:</span>
-                      <p className="font-medium">{order.quantity}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Total Amount:</span>
-                      <p className="font-medium">₹{(order.totalAmount / 100).toFixed(2)}</p>
-                    </div>
-                  </div>
-                  
-                  {order.trackingNumber && (
-                    <div className="bg-muted p-3 rounded-lg">
-                      <span className="text-sm text-muted-foreground">Tracking Number:</span>
-                      <p className="font-mono font-medium">{order.trackingNumber}</p>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                    <span>Ordered: {new Date(order.createdAt).toLocaleDateString()}</span>
-                    <span>Updated: {new Date(order.updatedAt).toLocaleDateString()}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            <Link href="/orders">
+              <Button variant="outline" size="sm">
+                View All Orders
+              </Button>
+            </Link>
           </div>
+          <UserOrderHistory />
         </TabsContent>
 
         <TabsContent value="analytics">

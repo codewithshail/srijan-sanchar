@@ -2,6 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { 
+  checkRateLimit, 
+  recordRateLimitedRequest,
+  getRateLimitErrorResponse 
+} from "@/lib/rate-limiting";
 
 const bodySchema = z.object({
   text: z.string().min(1),
@@ -10,10 +15,19 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    // Check rate limit for AI requests
+    const { allowed, result } = await checkRateLimit(req, "ai");
+    if (!allowed && result) {
+      return getRateLimitErrorResponse(result);
+    }
+
     const parsed = bodySchema.safeParse(await req.json());
     if (!parsed.success)
       return NextResponse.json({ error: "Invalid input" }, { status: 400 });
     const { text, contextHtml } = parsed.data;
+
+    // Record the request
+    await recordRateLimitedRequest(req, "ai");
 
     const model = google("gemini-1.5-flash");
     const prompt = `You are an expert writing assistant. 

@@ -8,20 +8,20 @@ const bodySchema = z.object({
   prompt: z.string().min(1),
   contextHtml: z.string().optional(),
   generationType: z.enum([
-    "paragraph", 
-    "introduction", 
-    "conclusion", 
-    "outline", 
+    "paragraph",
+    "introduction",
+    "conclusion",
+    "outline",
     "dialogue",
     "description",
     "transition"
   ]),
   length: z.enum(["short", "medium", "long"]).default("medium"),
   tone: z.enum([
-    "professional", 
-    "casual", 
-    "creative", 
-    "academic", 
+    "professional",
+    "casual",
+    "creative",
+    "academic",
     "conversational",
     "humorous",
     "dramatic",
@@ -40,18 +40,18 @@ export async function POST(req: NextRequest) {
       console.error("[BLOG_GENERATE] No userId from auth");
       return NextResponse.json({ error: "Please sign in to use AI content generation" }, { status: 401 });
     }
-    
+
     console.log("[BLOG_GENERATE] Authenticated user:", userId);
 
     const body = await req.json();
     console.log("[BLOG_GENERATE] Request body:", body);
-    
+
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       console.error("[BLOG_GENERATE] Validation error:", parsed.error.issues);
-      return NextResponse.json({ 
-        error: "Invalid input", 
-        details: parsed.error.issues 
+      return NextResponse.json({
+        error: "Invalid input",
+        details: parsed.error.issues
       }, { status: 400 });
     }
 
@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing GOOGLE_GENERATIVE_AI_API_KEY" }, { status: 500 });
     }
 
-    const model = google("gemini-1.5-flash");
-    
+    const model = google("gemini-2.0-flash");
+
     // Define length guidelines
     const lengthGuide = {
       short: "1-2 sentences",
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     };
 
     let systemPrompt = "";
-    
+
     switch (generationType) {
       case "paragraph":
         systemPrompt = `You are a creative writing assistant for blog stories.
@@ -139,14 +139,14 @@ User prompt: ${prompt}
 Generate the requested content. Return only the generated text, without markdown formatting or commentary.`;
 
     const { text: generated } = await generateText({ model, prompt: fullPrompt });
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       generated: generated?.trim(),
       generationType,
       length,
-      tone 
+      tone
     });
-    
+
   } catch (e: any) {
     console.error("Blog content generation error:", e);
     return NextResponse.json(

@@ -1,10 +1,84 @@
 import { Queue, Worker, Job, QueueEvents } from 'bullmq';
 import Redis from 'ioredis';
 
-// Redis connection configuration
-const connection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+// Lazy Redis connection - only created when first used
+let connection: Redis | null = null;
+let connectionError: Error | null = null;
+let isRedisAvailable = false;
+
+/**
+ * Get or create Redis connection lazily
+ * This prevents connection errors during build/static analysis
+ */
+function getConnection(): Redis {
+  if (connection) {
+    return connection;
+  }
+
+  const redisUrl = process.env.REDIS_URL;
+
+  if (!redisUrl) {
+    connectionError = new Error('REDIS_URL environment variable is not set. Job queue is disabled.');
+    throw connectionError;
+  }
+
+  try {
+    connection = new Redis(redisUrl, {
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+      retryStrategy: (times) => {
+        if (times > 3) {
+          connectionError = new Error('Redis connection failed after 3 retries');
+          return null; // Stop retrying
+        }
+        return Math.min(times * 100, 3000);
+      },
+    });
+
+    connection.on('connect', () => {
+      isRedisAvailable = true;
+      connectionError = null;
+      console.log('[JOB_QUEUE] Connected to Redis');
+    });
+
+    connection.on('error', (err) => {
+      isRedisAvailable = false;
+      connectionError = err;
+      console.error('[JOB_QUEUE] Redis connection error:', err.message);
+    });
+
+    connection.on('close', () => {
+      isRedisAvailable = false;
+      console.log('[JOB_QUEUE] Redis connection closed');
+    });
+
+    return connection;
+  } catch (err) {
+    connectionError = err as Error;
+    throw err;
+  }
+}
+
+/**
+ * Check if job queue is available
+ */
+export function isQueueAvailable(): boolean {
+  if (!process.env.REDIS_URL) {
+    return false;
+  }
+  // If connection hasn't been attempted yet, assume it could be available
+  if (!connection) {
+    return true;
+  }
+  return isRedisAvailable;
+}
+
+/**
+ * Get the last connection error if any
+ */
+export function getQueueError(): Error | null {
+  return connectionError;
+}
 
 // Job type definitions
 export enum JobType {
@@ -16,6 +90,8 @@ export enum JobType {
 export interface JobData {
   storyId: string;
   config?: any;
+  /** Database job ID (UUID) - different from BullMQ job ID */
+  dbJobId?: string;
   /** Parent job ID for chained jobs */
   parentJobId?: string;
   /** Priority level (lower = higher priority) */
@@ -76,51 +152,71 @@ const JOB_RETRY_CONFIGS: Record<JobType, typeof DEFAULT_RETRY_CONFIG> = {
   },
 };
 
-// Create queues for different job types
-export const storyGenerationQueue = new Queue<JobData>('story-generation', {
-  connection,
-  defaultJobOptions: {
-    ...JOB_RETRY_CONFIGS[JobType.STORY_GENERATION],
-    removeOnComplete: {
-      count: 100, // Keep last 100 completed jobs
-      age: 24 * 3600, // Keep for 24 hours
-    },
-    removeOnFail: {
-      count: 500, // Keep last 500 failed jobs
-      age: 7 * 24 * 3600, // Keep for 7 days
-    },
-  },
-});
+// Lazily created queues
+let storyGenerationQueue: Queue<JobData> | null = null;
+let imageGenerationQueue: Queue<JobData> | null = null;
+let audioGenerationQueue: Queue<JobData> | null = null;
 
-export const imageGenerationQueue = new Queue<JobData>('image-generation', {
-  connection,
-  defaultJobOptions: {
-    ...JOB_RETRY_CONFIGS[JobType.IMAGE_GENERATION],
-    removeOnComplete: {
-      count: 100,
-      age: 24 * 3600,
-    },
-    removeOnFail: {
-      count: 500,
-      age: 7 * 24 * 3600,
-    },
-  },
-});
+function getStoryGenerationQueue(): Queue<JobData> {
+  if (!storyGenerationQueue) {
+    storyGenerationQueue = new Queue<JobData>('story-generation', {
+      connection: getConnection(),
+      defaultJobOptions: {
+        ...JOB_RETRY_CONFIGS[JobType.STORY_GENERATION],
+        removeOnComplete: {
+          count: 100,
+          age: 24 * 3600,
+        },
+        removeOnFail: {
+          count: 500,
+          age: 7 * 24 * 3600,
+        },
+      },
+    });
+  }
+  return storyGenerationQueue;
+}
 
-export const audioGenerationQueue = new Queue<JobData>('audio-generation', {
-  connection,
-  defaultJobOptions: {
-    ...JOB_RETRY_CONFIGS[JobType.AUDIO_GENERATION],
-    removeOnComplete: {
-      count: 100,
-      age: 24 * 3600,
-    },
-    removeOnFail: {
-      count: 500,
-      age: 7 * 24 * 3600,
-    },
-  },
-});
+function getImageGenerationQueue(): Queue<JobData> {
+  if (!imageGenerationQueue) {
+    imageGenerationQueue = new Queue<JobData>('image-generation', {
+      connection: getConnection(),
+      defaultJobOptions: {
+        ...JOB_RETRY_CONFIGS[JobType.IMAGE_GENERATION],
+        removeOnComplete: {
+          count: 100,
+          age: 24 * 3600,
+        },
+        removeOnFail: {
+          count: 500,
+          age: 7 * 24 * 3600,
+        },
+      },
+    });
+  }
+  return imageGenerationQueue;
+}
+
+function getAudioGenerationQueue(): Queue<JobData> {
+  if (!audioGenerationQueue) {
+    audioGenerationQueue = new Queue<JobData>('audio-generation', {
+      connection: getConnection(),
+      defaultJobOptions: {
+        ...JOB_RETRY_CONFIGS[JobType.AUDIO_GENERATION],
+        removeOnComplete: {
+          count: 100,
+          age: 24 * 3600,
+        },
+        removeOnFail: {
+          count: 500,
+          age: 7 * 24 * 3600,
+        },
+      },
+    });
+  }
+  return audioGenerationQueue;
+}
+
 
 // Queue management class
 export class JobQueue {
@@ -136,16 +232,16 @@ export class JobQueue {
     }
   ): Promise<string> {
     let queue: Queue<JobData>;
-    
+
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        queue = storyGenerationQueue;
+        queue = getStoryGenerationQueue();
         break;
       case JobType.IMAGE_GENERATION:
-        queue = imageGenerationQueue;
+        queue = getImageGenerationQueue();
         break;
       case JobType.AUDIO_GENERATION:
-        queue = audioGenerationQueue;
+        queue = getAudioGenerationQueue();
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
@@ -168,32 +264,32 @@ export class JobQueue {
     error?: string;
   }> {
     let queue: Queue<JobData>;
-    
+
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        queue = storyGenerationQueue;
+        queue = getStoryGenerationQueue();
         break;
       case JobType.IMAGE_GENERATION:
-        queue = imageGenerationQueue;
+        queue = getImageGenerationQueue();
         break;
       case JobType.AUDIO_GENERATION:
-        queue = audioGenerationQueue;
+        queue = getAudioGenerationQueue();
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
     }
 
     const job = await queue.getJob(jobId);
-    
+
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
     }
 
     const state = await job.getState();
     const progress = job.progress as number;
-    
+
     let status: 'pending' | 'processing' | 'completed' | 'failed';
-    
+
     switch (state) {
       case 'waiting':
       case 'delayed':
@@ -225,23 +321,23 @@ export class JobQueue {
    */
   static async cancelJob(jobType: JobType, jobId: string): Promise<void> {
     let queue: Queue<JobData>;
-    
+
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        queue = storyGenerationQueue;
+        queue = getStoryGenerationQueue();
         break;
       case JobType.IMAGE_GENERATION:
-        queue = imageGenerationQueue;
+        queue = getImageGenerationQueue();
         break;
       case JobType.AUDIO_GENERATION:
-        queue = audioGenerationQueue;
+        queue = getAudioGenerationQueue();
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
     }
 
     const job = await queue.getJob(jobId);
-    
+
     if (job) {
       await job.remove();
     }
@@ -252,16 +348,16 @@ export class JobQueue {
    */
   static async getQueueStats(jobType: JobType) {
     let queue: Queue<JobData>;
-    
+
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        queue = storyGenerationQueue;
+        queue = getStoryGenerationQueue();
         break;
       case JobType.IMAGE_GENERATION:
-        queue = imageGenerationQueue;
+        queue = getImageGenerationQueue();
         break;
       case JobType.AUDIO_GENERATION:
-        queue = audioGenerationQueue;
+        queue = getAudioGenerationQueue();
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
@@ -293,16 +389,16 @@ export class JobQueue {
     grace: number = 24 * 3600 * 1000 // 24 hours
   ): Promise<void> {
     let queue: Queue<JobData>;
-    
+
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        queue = storyGenerationQueue;
+        queue = getStoryGenerationQueue();
         break;
       case JobType.IMAGE_GENERATION:
-        queue = imageGenerationQueue;
+        queue = getImageGenerationQueue();
         break;
       case JobType.AUDIO_GENERATION:
-        queue = audioGenerationQueue;
+        queue = getAudioGenerationQueue();
         break;
       default:
         throw new Error(`Unknown job type: ${jobType}`);
@@ -334,14 +430,14 @@ export class JobQueue {
   } | null> {
     const queue = this.getQueue(jobType);
     const job = await queue.getJob(jobId);
-    
+
     if (!job) {
       return null;
     }
 
     const state = await job.getState();
     let status: 'pending' | 'processing' | 'completed' | 'failed';
-    
+
     switch (state) {
       case 'waiting':
       case 'delayed':
@@ -382,11 +478,11 @@ export class JobQueue {
   private static getQueue(jobType: JobType): Queue<JobData> {
     switch (jobType) {
       case JobType.STORY_GENERATION:
-        return storyGenerationQueue;
+        return getStoryGenerationQueue();
       case JobType.IMAGE_GENERATION:
-        return imageGenerationQueue;
+        return getImageGenerationQueue();
       case JobType.AUDIO_GENERATION:
-        return audioGenerationQueue;
+        return getAudioGenerationQueue();
       default:
         throw new Error(`Unknown job type: ${jobType}`);
     }
@@ -398,7 +494,7 @@ export class JobQueue {
   static async retryJob(jobType: JobType, jobId: string): Promise<boolean> {
     const queue = this.getQueue(jobType);
     const job = await queue.getJob(jobId);
-    
+
     if (!job) {
       return false;
     }
@@ -434,10 +530,10 @@ export class JobQueue {
 
     for (const jobType of Object.values(JobType)) {
       const queue = this.getQueue(jobType);
-      
+
       // Get all jobs (this is expensive, use sparingly)
       const jobs = await queue.getJobs(['waiting', 'active', 'completed', 'failed', 'delayed']);
-      
+
       for (const job of jobs) {
         if (job.data.storyId === storyId) {
           const state = await job.getState();
@@ -481,5 +577,5 @@ export class JobQueue {
   }
 }
 
-// Export connection for workers
-export { connection };
+// Export getConnection for workers (connection is lazily created)
+export { getConnection };

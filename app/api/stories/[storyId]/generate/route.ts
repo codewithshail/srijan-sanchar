@@ -4,10 +4,10 @@ import { db } from "@/lib/db";
 import { stories, storyStages, generationJobs } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { JobQueue, JobType } from "@/lib/jobs";
-import { 
-  checkRateLimit, 
+import {
+  checkRateLimit,
   recordRateLimitedRequest,
-  getRateLimitErrorResponse 
+  getRateLimitErrorResponse
 } from "@/lib/rate-limiting";
 
 /**
@@ -75,7 +75,7 @@ export async function POST(
 
     // Validate content exists
     let hasContent = false;
-    
+
     if (story.storyType === "life_story") {
       // Check for stages
       const stages = await db.query.storyStages.findMany({
@@ -122,6 +122,7 @@ export async function POST(
       queueJobId = await JobQueue.addJob(JobType.STORY_GENERATION, {
         storyId,
         config,
+        dbJobId: jobRecord.id, // Pass database job ID so worker can update the correct record
       });
     } catch (queueError) {
       // If queue fails, update job record to failed
@@ -212,25 +213,25 @@ export async function GET(
       generationConfig: story.generationConfig,
       storyJob: latestJob
         ? {
-            id: latestJob.id,
-            status: latestJob.status,
-            config: latestJob.config,
-            result: latestJob.result,
-            error: latestJob.error,
-            createdAt: latestJob.createdAt,
-            updatedAt: latestJob.updatedAt,
-          }
+          id: latestJob.id,
+          status: latestJob.status,
+          config: latestJob.config,
+          result: latestJob.result,
+          error: latestJob.error,
+          createdAt: latestJob.createdAt,
+          updatedAt: latestJob.updatedAt,
+        }
         : null,
       imageJob: imageJob
         ? {
-            id: imageJob.id,
-            status: imageJob.status,
-            config: imageJob.config,
-            result: imageJob.result,
-            error: imageJob.error,
-            createdAt: imageJob.createdAt,
-            updatedAt: imageJob.updatedAt,
-          }
+          id: imageJob.id,
+          status: imageJob.status,
+          config: imageJob.config,
+          result: imageJob.result,
+          error: imageJob.error,
+          createdAt: imageJob.createdAt,
+          updatedAt: imageJob.updatedAt,
+        }
         : null,
       isGenerating:
         (latestJob && ["pending", "processing"].includes(latestJob.status)) ||

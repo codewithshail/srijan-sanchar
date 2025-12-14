@@ -8,17 +8,17 @@ const bodySchema = z.object({
   text: z.string().min(1),
   contextHtml: z.string().optional(),
   assistType: z.enum([
-    "improve", 
-    "extend", 
-    "rewrite", 
-    "summarize", 
+    "improve",
+    "extend",
+    "rewrite",
+    "summarize",
     "tone_adjust"
   ]),
   toneTarget: z.enum([
-    "professional", 
-    "casual", 
-    "creative", 
-    "academic", 
+    "professional",
+    "casual",
+    "creative",
+    "academic",
     "conversational"
   ]).optional(),
   storyId: z.string().optional(),
@@ -39,10 +39,10 @@ export async function POST(req: NextRequest) {
 
     const { text, contextHtml, assistType, toneTarget, storyId } = parsed.data;
 
-    const model = google("gemini-1.5-flash");
-    
+    const model = google("gemini-2.0-flash");
+
     let prompt = "";
-    
+
     switch (assistType) {
       case "improve":
         prompt = `You are an expert writing assistant for blog stories. 
@@ -118,13 +118,13 @@ ${text}`;
     }
 
     const { text: improved } = await generateText({ model, prompt });
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       improved: improved?.trim(),
       assistType,
-      toneTarget 
+      toneTarget
     });
-    
+
   } catch (e: any) {
     console.error("Blog AI Assist error:", e);
     return NextResponse.json(

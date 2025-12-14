@@ -2,10 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
-import { 
-  checkRateLimit, 
+import {
+  checkRateLimit,
   recordRateLimitedRequest,
-  getRateLimitErrorResponse 
+  getRateLimitErrorResponse
 } from "@/lib/rate-limiting";
 
 const bodySchema = z.object({
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Record the request
     await recordRateLimitedRequest(req, "ai");
 
-    const model = google("gemini-1.5-flash");
+    const model = google("gemini-2.0-flash");
     const prompt = `You are an expert writing assistant. 
 Improve the grammar and clarity of the provided text while preserving the author's voice. 
 Then add 1-2 sentences that naturally extend the idea. 

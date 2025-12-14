@@ -31,6 +31,7 @@ interface BlogStory {
   id: string;
   title: string;
   content: string;
+  description: string;
   storyType: string;
   status: string;
   updatedAt: string;
@@ -45,8 +46,10 @@ export default function BlogEditorPage() {
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingTitle, setIsSavingTitle] = useState(false);
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
+  const [isImprovingTitle, setIsImprovingTitle] = useState(false);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-  
+
   // AI features state
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [currentAIAction, setCurrentAIAction] = useState<AIAction | null>(null);
@@ -54,14 +57,14 @@ export default function BlogEditorPage() {
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [previousContent, setPreviousContent] = useState<string | null>(null);
-  
+
   // Voice input language preference
   const [voiceLanguage, setVoiceLanguage] = useState<string>("en-IN");
-  
+
   // Auto-save state
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Generation dialog state
   const [showGenerationDialog, setShowGenerationDialog] = useState(false);
 
@@ -79,26 +82,27 @@ export default function BlogEditorPage() {
   useEffect(() => {
     const loadStory = async () => {
       if (!storyId) return;
-      
+
       try {
         setIsLoading(true);
         const res = await fetch(`/api/stories/${storyId}/content`);
-        
+
         if (!res.ok) {
           throw new Error("Failed to load story");
         }
-        
+
         const storyData: BlogStory = await res.json();
-        
+
         if (storyData.storyType !== "blog_story") {
           toast.error("This editor is only for blog stories");
           router.push(`/editor/${storyId}`);
           return;
         }
-        
+
         setStory(storyData);
         setTitle(storyData.title || "");
         setContent(storyData.content || "");
+        setDescription(storyData.description || "");
       } catch (error) {
         console.error("Error loading story:", error);
         toast.error("Failed to load story");
@@ -123,7 +127,7 @@ export default function BlogEditorPage() {
   // Auto-save content function
   const handleAutoSave = useCallback(async (newContent: string) => {
     if (!storyId) return;
-    
+
     try {
       const res = await fetch(`/api/stories/${storyId}/content`, {
         method: "PATCH",
@@ -174,26 +178,129 @@ export default function BlogEditorPage() {
     }
   };
 
+  // Save description function
+  const saveDescription = async () => {
+    try {
+      setIsSavingDescription(true);
+      const res = await fetch(`/api/stories/${storyId}/content`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: description.trim() }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save description");
+      }
+
+      const updatedStory = await res.json();
+      setStory(prev => prev ? { ...prev, ...updatedStory } : null);
+      toast.success("Description saved successfully");
+    } catch (error) {
+      console.error("Error saving description:", error);
+      toast.error("Error saving description");
+    } finally {
+      setIsSavingDescription(false);
+    }
+  };
+
+  // Improve or generate title with AI
+  const improveTitle = useCallback(async () => {
+    // Check if we have either a title or content to work with
+    if (!title.trim() && !content.trim()) {
+      toast.error("Please add a title or content first");
+      return;
+    }
+
+    try {
+      setIsImprovingTitle(true);
+
+      // Determine what action to take
+      const hasExistingTitle = title.trim().length > 0;
+      const hasContent = content.trim().length > 50;
+
+      let actionType: string;
+      let textToProcess: string;
+
+      if (hasExistingTitle) {
+        // Improve existing title
+        actionType = "improve_title";
+        textToProcess = title;
+      } else if (hasContent) {
+        // Generate from content
+        actionType = "generate_title_from_content";
+        textToProcess = content;
+      } else {
+        toast.error("Please add some content to generate a title");
+        return;
+      }
+
+      const res = await fetch("/api/ai/creative-story-assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: textToProcess,
+          action: actionType,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to improve title");
+      }
+
+      const data = await res.json();
+      setTitle(data.result);
+      toast.success(hasExistingTitle ? "Title improved!" : "Title generated!");
+    } catch (error) {
+      console.error("Error improving title:", error);
+      toast.error("Failed to improve title");
+    } finally {
+      setIsImprovingTitle(false);
+    }
+  }, [title, content]);
+
   // Handle content change
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
   };
 
-  // Generate description from content
+  // Generate or improve description dynamically
   const generateDescription = useCallback(async () => {
-    if (!content.trim() || content.length < 100) {
-      toast.error("Add more content to generate a description");
+    // Check if we have either a title or content to work with
+    if (!title.trim() && !content.trim()) {
+      toast.error("Please add a title or content first");
       return;
     }
 
     try {
       setIsGeneratingDescription(true);
+
+      // Determine what action to take and what text to send
+      const hasExistingDescription = description.trim().length > 0;
+      const hasContent = content.trim().length > 50;
+
+      let actionType: string;
+      let textToProcess: string;
+
+      if (hasExistingDescription) {
+        // Improve existing description
+        actionType = "improve_description";
+        textToProcess = description;
+      } else if (hasContent) {
+        // Generate from content
+        actionType = "generate_description";
+        textToProcess = content;
+      } else {
+        // Generate from title only
+        actionType = "generate_description_from_title";
+        textToProcess = title;
+      }
+
       const res = await fetch("/api/ai/creative-story-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          text: content,
-          action: "generate_description",
+          text: textToProcess,
+          action: actionType,
           storyTitle: title,
         }),
       });
@@ -204,14 +311,14 @@ export default function BlogEditorPage() {
 
       const data = await res.json();
       setDescription(data.result);
-      toast.success("Description generated!");
+      toast.success(hasExistingDescription ? "Description improved!" : "Description generated!");
     } catch (error) {
       console.error("Error generating description:", error);
       toast.error("Failed to generate description");
     } finally {
       setIsGeneratingDescription(false);
     }
-  }, [content, title]);
+  }, [content, title, description]);
 
   // Handle voice input transcript
   const handleVoiceTranscript = useCallback(
@@ -222,7 +329,7 @@ export default function BlogEditorPage() {
         : `<p>${transcript}</p>`;
       setContent(newContent);
       toast.success("Voice input added");
-      
+
       // Trigger auto-save
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
@@ -241,7 +348,7 @@ export default function BlogEditorPage() {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = content;
       const plainText = tempDiv.textContent || tempDiv.innerText || '';
-      
+
       if (!plainText.trim()) {
         toast.error("Please add some content first");
         return;
@@ -281,7 +388,7 @@ export default function BlogEditorPage() {
           // Wrap result in paragraph tags for rich text editor
           const newContent = `<p>${data.result.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`;
           setContent(newContent);
-          
+
           const actionLabels: Record<AIAction, string> = {
             rewrite: "Content rewritten",
             grammar: "Grammar improved",
@@ -290,7 +397,7 @@ export default function BlogEditorPage() {
             suggest: "Suggestions generated",
           };
           toast.success(actionLabels[action]);
-          
+
           // Auto-save the AI-modified content
           handleAutoSave(newContent);
         }
@@ -379,8 +486,8 @@ export default function BlogEditorPage() {
             <Eye className="mr-2 h-4 w-4" />
             Preview Story
           </Button>
-          <Button 
-            onClick={() => setShowGenerationDialog(true)} 
+          <Button
+            onClick={() => setShowGenerationDialog(true)}
             disabled={!title.trim() || !content.trim()}
           >
             <Send className="mr-2 h-4 w-4" />
@@ -436,7 +543,20 @@ export default function BlogEditorPage() {
       {/* Title Editor */}
       <Card>
         <CardHeader>
-          <CardTitle>Story Title</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Story Title</CardTitle>
+            <LoadingButton
+              variant="outline"
+              size="sm"
+              onClick={improveTitle}
+              loading={isImprovingTitle}
+              loadingText={title.trim() ? "Improving..." : "Generating..."}
+              disabled={!title.trim() && !content.trim()}
+              icon={<Sparkles className="h-4 w-4" />}
+            >
+              {title.trim() ? "Improve" : "Generate"}
+            </LoadingButton>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
@@ -479,22 +599,35 @@ export default function BlogEditorPage() {
               size="sm"
               onClick={generateDescription}
               loading={isGeneratingDescription}
-              loadingText="Generating..."
-              disabled={!content.trim() || content.length < 100}
+              loadingText={description.trim() ? "Improving..." : "Generating..."}
+              disabled={!title.trim() && !content.trim()}
               icon={<Sparkles className="h-4 w-4" />}
             >
-              Generate
+              {description.trim() ? "Improve" : "Generate"}
             </LoadingButton>
           </div>
         </CardHeader>
         <CardContent>
-          <Textarea
-            placeholder="Click 'Generate' to create a description from your story content..."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={2}
-            className="resize-none"
-          />
+          <div className="flex flex-col gap-2">
+            <Textarea
+              placeholder="Click 'Generate' to create a description from your story content..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              className="resize-none"
+            />
+            <div className="flex justify-end">
+              <LoadingButton
+                onClick={saveDescription}
+                loading={isSavingDescription}
+                loadingText="Saving..."
+                disabled={!description.trim()}
+                size="sm"
+              >
+                Save Description
+              </LoadingButton>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -594,14 +727,14 @@ function formatLastSaved(date: Date): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / 60000);
-  
+
   if (minutes < 1) return "just now";
   if (minutes === 1) return "1 minute ago";
   if (minutes < 60) return `${minutes} minutes ago`;
-  
+
   const hours = Math.floor(minutes / 60);
   if (hours === 1) return "1 hour ago";
   if (hours < 24) return `${hours} hours ago`;
-  
+
   return date.toLocaleDateString();
 }

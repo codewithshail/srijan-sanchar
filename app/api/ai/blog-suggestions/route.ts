@@ -8,9 +8,9 @@ const bodySchema = z.object({
   contextHtml: z.string().min(1),
   currentText: z.string().optional(),
   suggestionType: z.enum([
-    "next_paragraph", 
-    "improve_flow", 
-    "add_details", 
+    "next_paragraph",
+    "improve_flow",
+    "add_details",
     "strengthen_opening",
     "better_conclusion",
     "enhance_dialogue",
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
 
     const { contextHtml, currentText, suggestionType, storyId } = parsed.data;
 
-    const model = google("gemini-1.5-flash");
-    
+    const model = google("gemini-2.0-flash");
+
     // Convert HTML to plain text for analysis
     const plainTextContext = contextHtml
       .replace(/<[^>]*>/g, ' ')
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       .trim();
 
     let prompt = "";
-    
+
     switch (suggestionType) {
       case "next_paragraph":
         prompt = `You are a creative writing assistant for blog stories.
@@ -143,7 +143,7 @@ Provide 3 specific suggestions for varying sentence structure. Format as a simpl
     }
 
     const { text: suggestions } = await generateText({ model, prompt });
-    
+
     // Parse suggestions into an array
     const suggestionList = suggestions
       .split('\n')
@@ -151,11 +151,11 @@ Provide 3 specific suggestions for varying sentence structure. Format as a simpl
       .filter(s => s.length > 0)
       .slice(0, 3); // Ensure we only return 3 suggestions
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       suggestions: suggestionList,
-      suggestionType 
+      suggestionType
     });
-    
+
   } catch (e: any) {
     console.error("Blog suggestions error:", e);
     return NextResponse.json(

@@ -63,22 +63,22 @@ function formatStoryAsMarkdown(
   _config: StoryGenerationConfig
 ): string {
   let formatted = '';
-  
+
   // Add title if available
   if (title) {
     formatted += `# ${title}\n\n`;
   }
-  
+
   // The content should already be in markdown format from Gemini
   // But we ensure proper formatting
   formatted += content;
-  
+
   // Ensure proper paragraph spacing
   formatted = formatted
     .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
     .replace(/([.!?])\s*\n(?=[A-Z])/g, '$1\n\n') // Add paragraph breaks after sentences
     .trim();
-  
+
   return formatted;
 }
 
@@ -93,21 +93,21 @@ function insertImagesIntoStory(
   if (!imageUrls || imageUrls.length === 0) {
     return storyContent;
   }
-  
+
   // Split story into sections (by headings or paragraphs)
   const sections = storyContent.split(/(?=^##\s)/m);
-  
+
   if (sections.length <= 1) {
     // No clear sections, split by paragraphs
     const paragraphs = storyContent.split(/\n\n+/);
     const paragraphsPerImage = Math.ceil(paragraphs.length / (imageUrls.length + 1));
-    
+
     const result: string[] = [];
     let imageIndex = 0;
-    
+
     for (let i = 0; i < paragraphs.length; i++) {
       result.push(paragraphs[i]);
-      
+
       // Insert image after every N paragraphs (but not at the very end)
       if (
         imageIndex < imageUrls.length &&
@@ -119,19 +119,19 @@ function insertImagesIntoStory(
         imageIndex++;
       }
     }
-    
+
     return result.join('\n\n');
   }
-  
+
   // Distribute images across sections
   let imageIndex = 0;
-  
+
   const result = sections.map((section, sectionIndex) => {
     // Don't add image to the first section (usually title/intro)
     if (sectionIndex === 0 || imageIndex >= imageUrls.length) {
       return section;
     }
-    
+
     // Add image at the beginning of the section (after the heading)
     const headingMatch = section.match(/^(##\s+[^\n]+\n)/);
     if (headingMatch) {
@@ -142,10 +142,10 @@ function insertImagesIntoStory(
       imageIndex++;
       return heading + imageMarkdown + rest;
     }
-    
+
     return section;
   });
-  
+
   return result.join('');
 }
 
@@ -159,7 +159,7 @@ function getToneGuidance(tone: string): string {
     poetic: 'Use lyrical language, metaphors, and vivid imagery. Create an emotional and artistic narrative with beautiful prose.',
     narrative: 'Use classic storytelling techniques with a balanced tone. Create engaging narrative flow with proper pacing and character development.',
   };
-  
+
   return toneGuides[tone] || toneGuides.narrative;
 }
 
@@ -172,7 +172,7 @@ function getAudienceGuidance(audience: string): string {
     adults: 'Use sophisticated vocabulary and complex themes. Include nuanced emotions and mature perspectives.',
     all: 'Use accessible language that appeals to all ages. Balance simplicity with depth.',
   };
-  
+
   return audienceGuides[audience] || audienceGuides.all;
 }
 
@@ -183,9 +183,14 @@ function getAudienceGuidance(audience: string): string {
 export async function processStoryGeneration(
   job: Job<JobData>
 ): Promise<JobResult> {
-  const { storyId, config } = job.data;
+  const { storyId, config, dbJobId } = job.data;
   const generationConfig = config as StoryGenerationConfig;
   const startTime = Date.now();
+
+  // Validate dbJobId
+  if (!dbJobId) {
+    throw new Error('Database job ID (dbJobId) is required for story generation');
+  }
 
   try {
     // Update job status in database
@@ -195,7 +200,7 @@ export async function processStoryGeneration(
         status: 'processing',
         updatedAt: new Date(),
       })
-      .where(eq(generationJobs.id, job.id!));
+      .where(eq(generationJobs.id, dbJobId));
 
     await updateProgress(job, 'INITIALIZING');
 
@@ -245,7 +250,7 @@ export async function processStoryGeneration(
       rawContent = lifeStages
         .map((stage) => `## ${stage.stageName}\n\n${stage.content}`)
         .join('\n\n');
-        
+
       console.log(`[STORY_GENERATION] Found ${lifeStages.length} stages with content`);
     } else {
       // Creative story - use the content field
@@ -307,16 +312,16 @@ export async function processStoryGeneration(
     // Queue image generation if enabled
     let imageJobId: string | null = null;
     let numberOfImages = 0;
-    
+
     if (generationConfig.includeAIImages) {
       try {
         const { JobQueue, JobType } = await import('../queue');
-        
+
         // Calculate number of images (1 per 4 pages, minimum 1, maximum 6)
         numberOfImages = Math.min(Math.max(Math.ceil(numberOfPages / 4), 1), 6);
-        
+
         console.log(`[STORY_GENERATION] Queuing ${numberOfImages} images for story ${storyId}`);
-        
+
         // Create image generation job record
         await db
           .insert(generationJobs)
@@ -356,7 +361,7 @@ export async function processStoryGeneration(
 
     // Calculate final word count
     const finalWordCount = generatedStory.split(/\s+/).length;
-    
+
     // Update story with generated content
     await db
       .update(stories)
@@ -378,7 +383,7 @@ export async function processStoryGeneration(
       .update(generationJobs)
       .set({
         status: 'completed',
-        result: { 
+        result: {
           generatedStory: true,
           wordCount: finalWordCount,
           characterCount: generatedStory.length,
@@ -393,7 +398,7 @@ export async function processStoryGeneration(
         },
         updatedAt: new Date(),
       })
-      .where(eq(generationJobs.id, job.id!));
+      .where(eq(generationJobs.id, dbJobId));
 
     await updateProgress(job, 'COMPLETE');
 
@@ -419,21 +424,23 @@ export async function processStoryGeneration(
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error(`[STORY_GENERATION] Job failed for story ${storyId} after ${duration}ms:`, error);
-    
-    // Update job status in database
-    await db
-      .update(generationJobs)
-      .set({
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        result: {
-          duration,
-          attemptsMade: job.attemptsMade,
-          maxAttempts: job.opts.attempts || 3,
-        },
-        updatedAt: new Date(),
-      })
-      .where(eq(generationJobs.id, job.id!));
+
+    // Update job status in database - use dbJobId if available, otherwise skip
+    if (dbJobId) {
+      await db
+        .update(generationJobs)
+        .set({
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          result: {
+            duration,
+            attemptsMade: job.attemptsMade,
+            maxAttempts: job.opts.attempts || 3,
+          },
+          updatedAt: new Date(),
+        })
+        .where(eq(generationJobs.id, dbJobId));
+    }
 
     throw error;
   }
@@ -466,7 +473,7 @@ export async function integrateImagesIntoStory(
 
     // Filter out fallback images
     const validImages = generatedImages.filter((img) => !img.isFallback && img.url);
-    
+
     if (validImages.length === 0) {
       console.log(`[STORY_GENERATION] No valid images to integrate for story ${storyId}`);
       return { success: true };
@@ -497,7 +504,7 @@ export async function integrateImagesIntoStory(
       .where(eq(stories.id, storyId));
 
     console.log(`[STORY_GENERATION] Integrated ${validImages.length} images into story ${storyId}`);
-    
+
     return { success: true };
   } catch (error) {
     console.error(`[STORY_GENERATION] Failed to integrate images:`, error);
@@ -559,6 +566,7 @@ export async function regenerateStory(
     const queueJobId = await JobQueue.addJob(JobType.STORY_GENERATION, {
       storyId,
       config,
+      dbJobId: jobRecord.id, // Pass database job ID so worker can update the correct record
     });
 
     console.log(`[STORY_GENERATION] Queued regeneration job ${queueJobId} for story ${storyId}`);

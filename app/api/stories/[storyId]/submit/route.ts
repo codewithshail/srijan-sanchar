@@ -171,6 +171,7 @@ export async function POST(
       queueJobId = await JobQueue.addJob(JobType.STORY_GENERATION, {
         storyId,
         config,
+        dbJobId: jobRecord.id, // Pass database job ID so worker can update the correct record
       });
     } catch (queueError) {
       // If queue fails, update job record to failed
@@ -264,13 +265,13 @@ export async function GET(
       validation,
       latestJob: latestJob
         ? {
-            id: latestJob.id,
-            status: latestJob.status,
-            config: latestJob.config,
-            error: latestJob.error,
-            createdAt: latestJob.createdAt,
-            updatedAt: latestJob.updatedAt,
-          }
+          id: latestJob.id,
+          status: latestJob.status,
+          config: latestJob.config,
+          error: latestJob.error,
+          createdAt: latestJob.createdAt,
+          updatedAt: latestJob.updatedAt,
+        }
         : null,
       canSubmit: validation.isValid && (!latestJob || !["pending", "processing"].includes(latestJob.status)),
     });

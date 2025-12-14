@@ -3,46 +3,55 @@
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import { getFontFamily, getTextDirection, type Locale } from "@/lib/i18n";
-import { ElementType, ComponentPropsWithoutRef } from "react";
+import { HTMLAttributes } from "react";
 
-type LocaleContentProps<T extends ElementType = "div"> = {
+interface LocaleContentProps extends HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
   className?: string;
-  as?: T;
+  as?: "div" | "span" | "p" | "section" | "article";
   forceLocale?: Locale;
-} & Omit<ComponentPropsWithoutRef<T>, "children" | "className" | "as">;
+}
 
 /**
  * A wrapper component that applies locale-specific font styling
  * to its children. Use this for content areas that should render
  * in the user's selected language with proper font support.
  */
-export function LocaleContent<T extends ElementType = "div">({
+export function LocaleContent({
   children,
   className,
-  as,
+  as = "div",
   forceLocale,
   ...props
-}: LocaleContentProps<T>) {
+}: LocaleContentProps) {
   const currentLocale = useLocale() as Locale;
   const locale = forceLocale || currentLocale;
   const direction = getTextDirection(locale);
-  const Component = as || "div";
 
-  return (
-    <Component
-      className={cn("locale-content indic-text", className)}
-      dir={direction}
-      data-locale={locale}
-      data-locale-font="true"
-      style={{
-        fontFamily: getFontFamily(locale),
-      }}
-      {...props}
-    >
-      {children}
-    </Component>
-  );
+  const sharedProps = {
+    className: cn("locale-content indic-text", className),
+    dir: direction,
+    "data-locale": locale,
+    "data-locale-font": "true",
+    style: {
+      fontFamily: getFontFamily(locale),
+      ...props.style,
+    },
+    ...props,
+  };
+
+  switch (as) {
+    case "span":
+      return <span {...sharedProps}>{children}</span>;
+    case "p":
+      return <p {...sharedProps}>{children}</p>;
+    case "section":
+      return <section {...sharedProps}>{children}</section>;
+    case "article":
+      return <article {...sharedProps}>{children}</article>;
+    default:
+      return <div {...sharedProps}>{children}</div>;
+  }
 }
 
 /**

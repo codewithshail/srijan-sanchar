@@ -1,131 +1,620 @@
-## Story Writing – Life Story Wizard
+# StoryWeave - AI-Powered Narrative Platform
 
-An end‑to‑end Next.js app where users craft a 7‑stage life story via a guided wizard. The system generates options with AI, stores progress in Postgres (via Drizzle ORM), and produces summaries, images, and multi-language TTS audio when complete.
+**Transform Your Life Through Storytelling**
 
-### Key Features
-- 7‑step story wizard with option regeneration per step
-- Authenticated user flow with Clerk
-- Postgres + Drizzle ORM schema for users, stories, stages, summaries, images
-- Background summary/image generation on completion
-- Image generation via Replicate (configurable model)
-- Multi-language text‑to‑speech via Sarvam AI Bulbul (13+ Indian languages + English)
-- Public/private visibility controls for stories
+A comprehensive full-stack platform for creating, editing, and publishing life stories and creative blogs with AI assistance, multi-language audio narration, print-on-demand services, and professional psychiatric support.
 
-### High‑Level Architecture
-- App Router (Next.js 15) with protected routes enforced in `middleware.ts`
-- Server routes under `app/api/**` using Next.js Route Handlers
-- Database access via `lib/db.ts` and `lib/schema.ts` (re‑exported under `lib/db/schema.ts`)
-- AI helpers in `lib/ai/gemini.ts`
+---
 
-## User Flows
+## 🎯 Overview
 
-### 1) Sign in and start a story
-- Visit `/dashboard` (protected by Clerk)
-- Click “Start New Story” → POST `/api/stories` → redirect to `/wizard/{storyId}`
+StoryWeave is a therapeutic and creative storytelling platform that helps users document their life journeys or create engaging blog stories. The platform combines cutting-edge AI technology with human expertise to provide a unique storytelling experience.
 
-### 2) Progress through the wizard
-- Page: `app/wizard/[storyId]/page.tsx`
-  - GET `/api/wizard/{storyId}` → returns current stage index, prior selection (if any), and options
-  - POST `/api/wizard/{storyId}/regenerate` → regenerates options for current stage
-  - POST `/api/wizard/{storyId}/next` with `{ selection }` → saves selection and advances stage
-  - After stage 6 (index 6), the server marks story as `draft` and kicks off background generation
+### Key Value Propositions
+- **Life Story Documentation**: 7-stage guided wizard for capturing complete life narratives
+- **Creative Blog Writing**: Rich text editor with AI-powered writing assistance
+- **Multi-Language Support**: Text-to-speech in 10+ Indian languages (Sarvam AI)
+- **Print on Demand**: Professional book printing and delivery via Razorpay
+- **Expert Support**: Schedule sessions with psychiatrists for therapeutic storytelling
+- **Community Features**: Public discovery, likes, comments, and sharing
+- **Background Processing**: Robust job queue for AI generations that don't block the UI
 
-### 3) Background generation (server)
-- `POST /api/wizard/{storyId}/next` triggers:
-  - Fetch all selections from `stages`
-  - Generate summaries and steps via Gemini
-  - Generate image via Replicate
-  - Persist to `summaries` and `images`
-  - Update story → `status = 'completed'`
+---
 
-### 4) View the story
-- Page: `app/story/[storyId]/page.tsx`
-  - GET `/api/stories/{storyId}` returns story with related `summary` and `image` if visible/authorized
-  - UI shows loading state while status is `draft`, and then renders final content once `completed`
+## 🏗️ Architecture
 
-## API Endpoints
+### Application Structure
 
-Wizard
-- `GET /api/wizard/{storyId}` – current stage data (index, selection, options)
-- `POST /api/wizard/{storyId}/regenerate` – regenerate options for current stage
-- `POST /api/wizard/{storyId}/next` – save selection and advance, triggers background generation on final stage
-
-Stories
-- `GET /api/stories` – list current user’s stories
-- `POST /api/stories` – create a new story and return `id`
-- `GET /api/stories/{storyId}` – fetch a story by id (checks visibility/ownership)
-
-Media / AI
-- `POST /api/image` – generate an image (Replicate)
-- `POST /api/tts` – generate TTS (Sarvam AI Bulbul)
-- `POST /api/tts/stream` – streaming TTS for long content
-- `GET /api/tts/languages` – get supported languages
-
-Note: Legacy endpoints `api/ai/*` and legacy pages `app/wizard/page.tsx` and `app/wizard/summary/page.tsx` were removed in favor of the canonical `wizard/{storyId}` flow.
-
-## Data Model (Drizzle)
-- `users`: Clerk users, role enum (`user`, `psychiatrist`, `admin`)
-- `stories`: ownerId, title, status enum (`draft`, `completed`), visibility enum
-- `stages`: per‑story stageIndex 0..6, selection, options[], regenerationCount
-- `summaries`: one‑to‑one with story; userSummary, psySummary, actionableSteps[], longForm (reserved)
-- `images`: one‑to‑one with story; prompt, url
-
-## Project Structure
-- `app/`
-  - `dashboard/page.tsx` – list/create stories, route into wizard/story
-  - `wizard/[storyId]/page.tsx` – main wizard UI
-  - `story/[storyId]/page.tsx` – final story view
-  - `api/` – route handlers (wizard, stories, image, tts, etc.)
-- `lib/`
-  - `ai/gemini.ts` – AI option/summary helpers
-  - `db.ts` – Drizzle DB client
-  - `schema.ts` – Drizzle schema
-- `middleware.ts` – Clerk protection for `/wizard`, `/dashboard`, `/admin`, `/psychiatrist`
-
-## Setup
-
-### 1) Prerequisites
-- Node 20+
-- Postgres (Neon or local)
-- Clerk application (Frontend/API keys)
-- Google Gemini API key
-- Replicate API token (for images)
-- Sarvam AI API key (for multi-language TTS)
-
-### 2) Environment
-Copy `ENV_SAMPLE` to `.env.local` and fill:
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`
-- `DATABASE_URL`
-- `GEMINI_API_KEY`
-- `REPLICATE_API_TOKEN` and optional `REPLICATE_MODEL`
-- `SARVAM_API_KEY` (for Sarvam AI Bulbul TTS - supports 13+ Indian languages)
-- `NEXT_PUBLIC_APP_URL`
-
-### 3) Install & run
-```bash
-npm install
-npm run dev
 ```
-App runs at `http://localhost:3000`.
+/app
+├── page.tsx                          # Landing page with marketing sections
+├── create/page.tsx                   # Story type selection (Life or Blog)
+├── wizard/[storyId]/page.tsx         # 7-stage life story wizard
+├── life-story/[storyId]/page.tsx     # Life story stage-by-stage editor
+├── blog-editor/[storyId]/page.tsx    # Rich text blog editor with AI tools
+├── story/[storyId]/page.tsx          # Story viewer (auto-generates on load)
+├── dashboard/page.tsx                # User dashboard with tabs (stories/liked/appointments/print orders/analytics)
+├── explore/page.tsx                  # Discover public stories
+├── publish/[storyId]/page.tsx        # Publication workflow
+├── orders/page.tsx                   # Print order history
+├── admin/                            # Admin panel
+│   ├── page.tsx                      # User/story/order/job management
+│   ├── jobs/page.tsx                 # Background job monitoring
+│   ├── moderation/page.tsx           # Content moderation
+│   └── print-orders/page.tsx         # Fulfill print orders
+├── psychiatrist/                     # Psychiatrist portal
+│   ├── page.tsx                      # Appointment queue
+│   └── story/[storyId]/page.tsx      # Review stories with notes
+└── api/                              # Backend API routes
+```
 
-### 4) Database
-Ensure `DATABASE_URL` is set. This project uses Drizzle ORM. If you need migrations, set up `drizzle-kit` per your environment and run migrations against your database. The schema is defined in `lib/schema.ts`.
+### Database Schema
 
-## Authentication & Authorization
-- Middleware protects `/wizard`, `/dashboard`, `/admin`, `/psychiatrist` using Clerk
-- API routes validate user via `auth()` and check ownership/visibility where needed
+**Core Tables:**
+- **users**: Clerk authentication with roles (user/psychiatrist/admin)
+- **stories**: Main content table (life_story/blog_story types)
+- **storyStages**: Life story stage content (7 stages)
+- **lifeStageTemplates**: User-saved templates for reuse
+- **summaries**: AI-generated insights and actionable steps
+- **images**: Story banner images
+- **audioChapters**: Chunked audio for TTS (multi-language)
+- **comments**: Nested comment threads
+- **likes**: User engagement tracking
+- **printOrders**: Razorpay print-on-demand orders
+- **appointments**: Psychiatrist consultations
+- **generationJobs**: Background job tracking
+- **contentFlags**: Content moderation system
+- **storyAnalytics**: View/listen/share events
 
-## Development Notes
-- Uses React Query for client data fetching/mutations
-- Next.js App Router with Route Handlers for APIs
-- Tailwind UI components under `components/ui`
-- Removed legacy wizard flow to avoid duplication
+---
 
-## Troubleshooting
-- 401/redirect: ensure Clerk keys and webhooks are configured and you’re signed in
-- Image generation fails: set `REPLICATE_API_TOKEN` and check model permissions
-- TTS 503: set `SARVAM_API_KEY` for Sarvam AI Bulbul TTS service
-- DB errors: verify `DATABASE_URL` and that tables exist
+## 🎨 User Flows
 
-## License
-Proprietary. All rights reserved.
+### 1. Life Story Creation
+
+```mermaid
+graph TD
+    A[Create Story] --> B[Select: Life Story]
+    B --> C[7-Stage Wizard]
+    C --> D{For Each Stage}
+    D --> E[AI Generates 3 Options]
+    E --> F[Select or Write Custom]
+    F --> G[Speech Recognition Available]
+    G --> H[Next Stage]
+    H --> D
+    D --> I[Final Stage Configuration]
+    I --> J[Generate Image?]
+    I --> K[Summary or Full Story?]
+    I --> L[Page Count Slider]
+    L --> M[Generate Story]
+    M --> N[Background Job Queue]
+    N --> O[Story Complete]
+```
+
+**7 Life Stages:**
+1. **Early Childhood (0-6)** - Warm family moments, first friends
+2. **School Years (7-12)** - Learning adventures, favorite teachers
+3. **Adolescence (13-19)** - Identity search, first heartbreak
+4. **Young Adulthood (20-30)** - Career beginnings, moving out
+5. **Career & Family (31-50)** - Parenthood, milestones
+6. **Midlife Transition (51-65)** - Reflection, reinvention
+7. **Later Life & Legacy (65+)** - Wisdom sharing, gratitude
+
+### 2. Creative Blog Writing
+
+```mermaid
+graph TD
+    A[Create Story] --> B[Select: Blog Story]
+    B --> C[Blog Editor with Tiptap]
+    C --> D[Rich Text Features]
+    D --> E[Headings/Bold/Lists/Links/Images]
+    C --> F[AI Writing Assistant]
+    F --> G[Rewrite/Grammar/Expand/Translate]
+    C --> H[Voice Input]
+    H --> I[Multi-Language STT]
+    C --> J[Auto-Save Every 2s]
+    J --> K[Generate AI Title]
+    K --> L[Generate AI Description]
+    L --> M[Preview Story]
+    M --> N[Generate with Config]
+    N --> O[Publish]
+```
+
+**AI Assist Features:**
+- **Rewrite**: Improve writing style and flow
+- **Grammar**: Fix errors and enhance clarity
+- **Expand**: Add more details and depth
+- **Translate**: Convert to target language
+- **Suggest**: Get continuation ideas
+- **Title Generation**: From content or improve existing
+- **Description Generation**: SEO-optimized summaries
+
+### 3. Publication & Sharing
+
+```mermaid
+graph TD
+    A[Complete Story] --> B[Publication Workflow]
+    B --> C[Upload Banner Image]
+    C --> D[Choose Visibility]
+    D --> E[Private]
+    D --> F[Public Summary]
+    D --> G[Public Full]
+    G --> H[Publish to Explore]
+    H --> I[Generate Audio Chapters]
+    I --> J[Multi-Language TTS]
+    J --> K[Share on Social]
+    K --> L[Analytics Dashboard]
+    L --> M[Views/Listens/Shares]
+```
+
+### 4. Print on Demand
+
+```mermaid
+graph TD
+    A[View Story] --> B[Order Print Copy]
+    B --> C[Select Size]
+    C --> D[A5/A4/Custom]
+    D --> E[Select Cover]
+    E --> F[Hardcover/Paperback]
+    F --> G[Set Quantity]
+    G --> H[Add Shipping Address]
+    H --> I[Create Razorpay Order]
+    I --> J[Payment Gateway]
+    J --> K[Verify Payment Signature]
+    K --> L[Update Order Status]
+    L --> M[Admin Fulfills]
+    M --> N[Add Tracking Number]
+    N --> O[Email Notification]
+```
+
+### 5. Psychiatrist Sessions
+
+```mermaid
+graph TD
+    A[Complete Life Story] --> B[Request Expert Session]
+    B --> C[Submit Notes]
+    C --> D[Psychiatrist Queue]
+    D --> E{Accept/Reject}
+    E --> F[Schedule via Google Calendar]
+    F --> G[Create Meet Link]
+    G --> H[Patient Notification]
+    H --> I[Attend Session]
+    I --> J[Psychiatrist Adds Feedback]
+    J --> K[User Reads Insights]
+```
+
+---
+
+## 🔧 Technical Features
+
+### Frontend Architecture
+
+**Framework**: Next.js 15 (App Router, Server Components, Server Actions)
+**Rendering**:
+- **SSR**: Story pages, user dashboards
+- **CSR**: Editors, real-time features
+- **ISR**: Public story discovery
+
+**State Management**:
+- **TanStack Query**: Server state caching
+- **React Hook Form**: Form validation
+- **Zustand** (if needed): Client state
+
+**Styling**:
+- **Tailwind CSS 4**: Utility-first styling
+- **shadcn/ui**: Pre-built accessible components
+- **Framer Motion**: Smooth animations
+- **Geist Font**: Modern typography
+
+### Backend Architecture
+
+**API Layer**:
+- **Next.js Route Handlers**: RESTful endpoints
+- **Clerk Middleware**: Authentication & RBAC
+- **Zod**: Runtime validation
+- **CORS**: Configured for webhooks
+
+**Database Layer**:
+- **PostgreSQL**: Primary data store (Neon serverless)
+- **Drizzle ORM**: Type-safe queries
+- **Connection Pooling**: `@neondatabase/serverless`
+- **Migrations**: Version-controlled schema changes
+
+**Caching Layer**:
+- **Redis**: Session storage, rate limiting
+- **BullMQ**: Job queue persistence
+- **Application Cache**: In-memory for hot paths
+
+**Job Queue System**:
+```typescript
+// Job Types
+- story_generation: AI-powered narrative creation
+- image_generation: Banner/thumbnail creation
+- audio_generation: TTS chapter generation
+
+// Retry Strategy
+- Exponential backoff (2s, 4s, 8s)
+- Max attempts: 3-4 based on job type
+- Dead letter queue for failed jobs
+
+// Scaling
+- Horizontal: Multiple worker processes
+- Priority: User-facing jobs first
+- Monitoring: Admin job dashboard
+```
+
+### AI Integration
+
+**Google Gemini 2.0 Flash**:
+- Story generation from wizard selections
+- Writing assistance (rewrite, grammar, expand)
+- Title and description generation
+- Translation to multiple languages
+- Suggestion generation
+- Language quality checking
+
+**Sarvam AI (Bulbul TTS)**:
+- 10+ Indian language support
+- Intelligent text chunking (sentence-aware)
+- Audio chapter generation
+- Streaming for long content
+- Rate limiting with retry logic
+
+**Google Cloud Vision** (if configured):
+- Image generation via Imagen
+- Banner optimization
+
+### Security
+
+**Authentication**:
+- Clerk for user management
+- Webhook signature verification
+- Session-based authorization
+
+**Authorization**:
+- Role-based access control (RBAC)
+- Story ownership validation
+- Admin/Psychiatrist middleware
+
+**Data Protection**:
+- Input sanitization (Zod schemas)
+- SQL injection prevention (Drizzle ORM)
+- XSS protection (React escaping)
+- CSRF tokens for forms
+
+**Payment Security**:
+- Razorpay signature verification
+- Webhook secret validation
+- Idempotent order creation
+- Secure environment variables
+
+**Content Moderation**:
+- Automated flagging system
+- Manual review workflow
+- Spam detection
+- User reporting
+
+### Performance Optimization
+
+**Image Optimization**:
+```typescript
+// Cloudinary transformations
+- Responsive srcsets (400w, 800w, 1200w, 1600w)
+- WebP/AVIF format auto-selection
+- Lazy loading with blur placeholders
+- Print quality (300 DPI for books)
+- Thumbnail caching
+```
+
+**Audio Optimization**:
+```typescript
+// Intelligent chunking
+- Sentence boundary detection
+- 60-second chapter targets
+- Sequential playback queueing
+- Cloudinary CDN delivery
+```
+
+**Code Splitting**:
+- Route-based chunks (automatic)
+- Dynamic imports for heavy components
+- Tree shaking for unused code
+
+**Database Optimization**:
+- Indexed foreign keys
+- Composite indexes for queries
+- Query result pagination
+- Connection pooling
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js** 18.x or higher
+- **PostgreSQL** 14+ (or Neon account)
+- **Redis** 6+ (or Upstash account)
+- **pnpm/npm** (pnpm recommended)
+
+### Required API Keys
+
+Create accounts and obtain API keys for:
+1. **Clerk** - Authentication ([clerk.com](https://clerk.com))
+2. **Neon** - PostgreSQL database ([neon.tech](https://neon.tech))
+3. **Upstash Redis** - Job queue ([upstash.com](https://upstash.com))
+4. **Google AI** - Gemini API ([ai.google.dev](https://ai.google.dev))
+5. **Sarvam AI** - TTS ([sarvam.ai](https://sarvam.ai))
+6. **Cloudinary** - Media storage ([cloudinary.com](https://cloudinary.com))
+7. **Razorpay** - Payments ([razorpay.com](https://razorpay.com))
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd story-writing
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
+
+3. **Configure environment variables**:
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` and add your keys:
+   ```env
+   # Database
+   DATABASE_URL="postgresql://..."
+
+   # Authentication
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+   CLERK_SECRET_KEY="sk_test_..."
+   CLERK_WEBHOOK_SECRET="whsec_..."
+
+   # AI Services
+   GOOGLE_GENERATIVE_AI_API_KEY="AIza..."
+   SARVAM_API_KEY="..."
+
+   # Storage
+   CLOUDINARY_CLOUD_NAME="..."
+   CLOUDINARY_API_KEY="..."
+   CLOUDINARY_API_SECRET="..."
+
+   # Queue
+   REDIS_URL="redis://..."
+
+   # Payments
+   RAZORPAY_KEY_ID="rzp_test_..."
+   RAZORPAY_KEY_SECRET="..."
+   RAZORPAY_WEBHOOK_SECRET="..."
+
+   # App
+   NEXT_PUBLIC_APP_URL="http://localhost:3000"
+   ```
+
+4. **Initialize database**:
+   ```bash
+   npm run db:push
+   ```
+
+5. **Start development server**:
+   ```bash
+   npm run dev
+   ```
+
+6. **Start background workers** (in a new terminal):
+   ```bash
+   npm run workers
+   ```
+
+7. **Open the app**:
+   ```
+   http://localhost:3000
+   ```
+
+### First-Time Setup
+
+1. Visit `/sign-up` to create your account
+2. Complete the onboarding flow
+3. Create your first story from `/create`
+4. Explore the wizard or blog editor
+
+---
+
+## 📜 Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Next.js dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate Drizzle migrations |
+| `npm run db:migrate` | Apply migrations |
+| `npm run db:push` | Push schema to database (dev) |
+| `npm run db:studio` | Open Drizzle Studio |
+| `npm run workers` | Start BullMQ worker process |
+| `npm run db:verify` | Verify schema integrity |
+
+---
+
+## 🎛️ Admin Features
+
+Access `/admin` with admin role to:
+
+- **User Management**: View all users, assign roles
+- **Story Moderation**: Review flagged content
+- **Print Orders**: Fulfill orders, add tracking
+- **Job Monitoring**: View queue stats, retry failures
+- **Content Flags**: Review reports, take action
+- **Analytics**: Platform-wide metrics
+
+---
+
+## 🧠 Psychiatrist Portal
+
+Access `/psychiatrist` with psychiatrist role to:
+
+- **Appointment Queue**: See pending session requests
+- **Story Review**: Read life stories with clinical notes
+- **Schedule Sessions**: Create Google Meet links
+- **Provide Feedback**: Add therapeutic insights
+- **Track Confirmed**: Manage upcoming appointments
+
+---
+
+## 📱 Key Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing page with hero, features, pricing |
+| `/create` | Choose life story or blog story |
+| `/wizard/[id]` | 7-stage life story wizard |
+| `/life-story/[id]` | Stage-by-stage life editor |
+| `/blog-editor/[id]` | Rich text blog editor |
+| `/story/[id]` | View published story |
+| `/dashboard` | User stories, appointments, orders, analytics |
+| `/explore` | Discover public stories |
+| `/publish/[id]` | Publication workflow |
+| `/analytics/[id]` | Story-specific metrics |
+| `/orders` | Print order history |
+| `/admin` | Admin dashboard |
+| `/psychiatrist` | Psychiatrist portal |
+
+---
+
+## 🔌 API Routes
+
+### Stories
+- `GET /api/stories` - List user stories
+- `GET /api/stories/[id]` - Get story details
+- `PATCH /api/stories/[id]` - Update story
+- `DELETE /api/stories/[id]` - Delete story
+- `GET /api/stories/[id]/content` - Get story content
+- `PATCH /api/stories/[id]/content` - Update content
+- `GET /api/stories/[id]/stages` - Get life story stages
+- `POST /api/stories/[id]/stages` - Save stage content
+
+### AI
+- `POST /api/ai/generate` - Generate story from wizard
+- `POST /api/ai/creative-story-assist` - Writing assistance
+- `POST /api/ai/blog-generate` - Generate blog post
+- `POST /api/ai/outline` - Create story outline
+- `POST /api/ai/image-prompt` - Generate image prompt
+
+### Audio
+- `POST /api/tts/stream` - Stream TTS audio
+- `POST /api/translate-tts` - Translate and speak
+- `GET /api/audio/stream/[chapterId]` - Stream audio chapter
+
+### Payments
+- `POST /api/payment/create-order` - Create Razorpay order
+- `POST /api/payment/verify` - Verify payment signature
+- `GET /api/print-orders` - List print orders
+- `POST /api/print-orders` - Create print order
+
+### Admin
+- `GET /api/admin/users` - List all users
+- `PATCH /api/admin/users/[id]/role` - Change user role
+- `GET /api/admin/jobs/list` - List background jobs
+- `GET /api/admin/jobs/stats` - Job queue statistics
+- `GET /api/admin/moderation` - List content flags
+- `POST /api/admin/moderation/[id]` - Resolve flag
+
+### Appointments
+- `POST /api/appointments` - Request appointment
+- `GET /api/appointments/user` - User's appointments
+- `POST /api/psychiatrist/appointments/[id]/accept` - Accept appointment
+- `POST /api/psychiatrist/appointments/[id]/schedule` - Schedule session
+- `POST /api/psychiatrist/appointments/[id]/feedback` - Add feedback
+
+---
+
+## 🌍 Deployment
+
+### Vercel Deployment
+
+1. **Main App**:
+   ```bash
+   vercel
+   ```
+   - Auto-deploys from `main` branch
+   - Environment variables in Vercel dashboard
+   - Serverless functions for API routes
+
+2. **Background Workers**:
+   - Deploy as a separate long-running service (Railway/Render)
+   - Set `REDIS_URL` and `DATABASE_URL`
+   - Run `npm run workers`
+   - Optional: Use Vercel Cron + Queue for lightweight jobs
+
+### Environment Setup
+
+Ensure these are configured in production:
+- `DATABASE_URL` (Neon connection string)
+- `REDIS_URL` (Upstash Redis URL)
+- All API keys from `.env`
+- `NEXT_PUBLIC_APP_URL` (your domain)
+
+### Database Migrations
+
+Run migrations on deploy:
+```bash
+npm run db:migrate
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test file
+npm test -- story.test.ts
+
+# Watch mode
+npm test -- --watch
+```
+
+**Test Coverage**:
+- Unit tests for utilities
+- Integration tests for API routes
+- Component tests for critical UX
+
+---
+
+## 📄 License
+
+This project is proprietary. All rights reserved.
+
+---
+
+## 🤝 Contributing
+
+This is a private project. For access requests, contact the maintainer.
+
+---
+
+## 📞 Support
+
+For issues or questions:
+- Email: support@storyweave.com
+- GitHub Issues: (if public)
+
+---
+
+## 🙏 Acknowledgments
+
+- **Clerk** for authentication
+- **Neon** for serverless Postgres
+- **Vercel** for hosting
+- **shadcn/ui** for component library
+- **Google Gemini** for AI capabilities
+- **Sarvam AI** for Indian language TTS

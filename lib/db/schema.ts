@@ -22,10 +22,10 @@ export const storyVisibilityEnum = pgEnum("story_visibility", [
   "public_long",
 ]);
 export const storyStatusEnum = pgEnum("story_status", [
-  "draft", 
-  "completed", 
-  "pending_review", 
-  "published", 
+  "draft",
+  "completed",
+  "pending_review",
+  "published",
   "rejected"
 ]);
 
@@ -105,6 +105,7 @@ export const stories = pgTable("stories", {
   title: text("title"),
   storyType: storyTypeEnum("story_type").notNull().default("life_story"),
   content: text("content"), // For blog stories
+  description: text("description"), // Story description for SEO and sharing
   status: storyStatusEnum("status").notNull().default("draft"),
   visibility: storyVisibilityEnum("visibility").notNull().default("private"),
   bannerImageUrl: text("banner_image_url"),

@@ -40,22 +40,22 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    
+
     // Try to parse as editor request first
     const editorParsed = editorSchema.safeParse(body)
     if (editorParsed.success) {
       return handleEditorGeneration(editorParsed.data)
     }
-    
+
     // Try to parse as wizard request
     const wizardParsed = wizardSchema.safeParse(body)
     if (wizardParsed.success) {
       return handleWizardGeneration(wizardParsed.data)
     }
-    
+
     console.error("Schema validation failed:", body)
     return NextResponse.json({ error: "Invalid input format" }, { status: 400 })
-    
+
   } catch (err: any) {
     console.error("API error:", err)
     return NextResponse.json(
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
 
 async function handleEditorGeneration(data: z.infer<typeof editorSchema>) {
   const { storyId, storyType, title, contentHtml } = data
-  
+
   try {
     // Verify story ownership
     const existingStory = await db
@@ -83,8 +83,8 @@ async function handleEditorGeneration(data: z.infer<typeof editorSchema>) {
     const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY
     if (!key) return NextResponse.json({ error: "Missing GOOGLE_GENERATIVE_AI_API_KEY" }, { status: 500 })
 
-    const model = google(storyType === "summary" ? "gemini-1.5-flash" : "gemini-1.5-pro")
-    
+    const model = google(storyType === "summary" ? "gemini-2.0-flash" : "gemini-1.5-pro")
+
     // Convert HTML to plain text for better AI processing
     const plainTextContent = contentHtml
       .replace(/<[^>]*>/g, ' ') // Remove HTML tags
@@ -99,9 +99,9 @@ Title: ${title}
 Current content:
 ${plainTextContent || "No content provided yet - please create from the title."}
 
-Task: ${storyType === "summary" 
-  ? "Create a polished, well-structured summary that improves grammar, clarity, and flow while preserving the core message. Keep it concise but meaningful (2-4 paragraphs)." 
-  : "Expand this into a complete, engaging story of 800-1500 words with clear structure, vivid details, and emotional depth."}
+Task: ${storyType === "summary"
+        ? "Create a polished, well-structured summary that improves grammar, clarity, and flow while preserving the core message. Keep it concise but meaningful (2-4 paragraphs)."
+        : "Expand this into a complete, engaging story of 800-1500 words with clear structure, vivid details, and emotional depth."}
 
 Requirements:
 - Use clear headings and subheadings where appropriate  
@@ -114,7 +114,7 @@ Return only the story content, no additional commentary.
 `
 
     const { text } = await generateText({ model, prompt })
-    
+
     // Convert markdown to HTML for consistency
     const htmlContent = text
       .split('\n')
@@ -134,7 +134,7 @@ Story: ${text}
 
 Return only a simple list of actionable steps, one per line, without numbers or bullets.`
 
-    const stepsResult = await generateText({ model: google("gemini-1.5-flash"), prompt: stepsPrompt })
+    const stepsResult = await generateText({ model: google("gemini-2.0-flash"), prompt: stepsPrompt })
     const actionableSteps = stepsResult.text.split('\n').filter(step => step.trim().length > 0)
 
     // Generate psychological summary
@@ -144,7 +144,7 @@ Story: ${text}
 
 Provide 2-3 sentences focusing on resilience, growth patterns, or positive psychological insights.`
 
-    const psyResult = await generateText({ model: google("gemini-1.5-flash"), prompt: psyPrompt })
+    const psyResult = await generateText({ model: google("gemini-2.0-flash"), prompt: psyPrompt })
 
     // Create the complete summary object
     const summary = {
@@ -154,13 +154,13 @@ Provide 2-3 sentences focusing on resilience, growth patterns, or positive psych
       longFormStory: storyType === "full" ? text : undefined
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       storyId,
       summary,
       generatedContent: htmlContent
     })
-    
+
   } catch (err: any) {
     console.error("AI generation failed:", err)
     return NextResponse.json(
@@ -178,7 +178,7 @@ async function handleWizardGeneration(data: z.infer<typeof wizardSchema>) {
   const key = process.env.GOOGLE_GENERATIVE_AI_API_KEY
   if (!key) return NextResponse.json({ error: "Missing GOOGLE_GENERATIVE_AI_API_KEY" }, { status: 500 })
 
-  const model = google(mode === "summary" ? "gemini-1.5-flash" : "gemini-1.5-pro")
+  const model = google(mode === "summary" ? "gemini-2.0-flash" : "gemini-1.5-pro")
   const prompt = `
 You are a compassionate biographical storyteller.
 
@@ -186,13 +186,13 @@ Title: ${title}
 
 Seven life stages (age range, selected events, notes):
 ${stages
-  .map(
-    (s, i) =>
-      `${i + 1}. ${s.range}
+      .map(
+        (s, i) =>
+          `${i + 1}. ${s.range}
    Selected: ${(s.selections || []).join("; ") || "—"}
    Notes: ${s.notes || "—"}`,
-  )
-  .join("\n")}
+      )
+      .join("\n")}
 
 Write a ${mode === "summary" ? "concise 2-4 paragraph summary" : "complete, engaging story of 800-1500 words"}.
 Use clear headings and subheadings where appropriate. Preserve chronology and connective emotional insights.

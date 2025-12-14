@@ -11,7 +11,7 @@ export async function GET(
   try {
     const { storyId } = await params;
     const { userId } = await auth();
-    
+
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -30,6 +30,7 @@ export async function GET(
         id: true,
         title: true,
         content: true,
+        description: true,
         storyType: true,
         status: true,
         updatedAt: true,
@@ -47,6 +48,7 @@ export async function GET(
       id: story.id,
       title: story.title,
       content: story.content || "",
+      description: story.description || "",
       storyType: story.storyType,
       status: story.status,
       updatedAt: story.updatedAt,
@@ -64,7 +66,7 @@ export async function PATCH(
   try {
     const { storyId } = await params;
     const { userId } = await auth();
-    
+
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
@@ -78,9 +80,10 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { content, title } = body as {
+    const { content, title, description } = body as {
       content?: string;
       title?: string;
+      description?: string;
     };
 
     // Validate that this is a blog story
@@ -111,6 +114,10 @@ export async function PATCH(
       updateData.title = title.trim() || null;
     }
 
+    if (typeof description === "string") {
+      updateData.description = description.trim() || null;
+    }
+
     const [updatedStory] = await db
       .update(stories)
       .set(updateData)
@@ -119,6 +126,7 @@ export async function PATCH(
         id: stories.id,
         title: stories.title,
         content: stories.content,
+        description: stories.description,
         updatedAt: stories.updatedAt,
       });
 
@@ -130,6 +138,7 @@ export async function PATCH(
       id: updatedStory.id,
       title: updatedStory.title,
       content: updatedStory.content || "",
+      description: updatedStory.description || "",
       updatedAt: updatedStory.updatedAt,
     });
   } catch (error) {

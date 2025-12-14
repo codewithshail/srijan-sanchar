@@ -6,7 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -44,79 +45,103 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  /* White & Blue Professional Theme */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2 0.02 250);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 250);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 250);
-  /* Primary Blue */
-  --primary: oklch(0.55 0.2 250);
-  --primary-foreground: oklch(1 0 0);
-  /* Secondary - Light Blue */
-  --secondary: oklch(0.96 0.02 250);
-  --secondary-foreground: oklch(0.35 0.15 250);
-  /* Muted */
-  --muted: oklch(0.97 0.01 250);
-  --muted-foreground: oklch(0.5 0.03 250);
-  /* Accent - Lighter Blue */
-  --accent: oklch(0.92 0.04 250);
-  --accent-foreground: oklch(0.35 0.15 250);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.92 0.02 250);
-  --input: oklch(0.92 0.02 250);
-  --ring: oklch(0.55 0.2 250);
-  /* Charts - Blue variations */
-  --chart-1: oklch(0.55 0.2 250);
-  --chart-2: oklch(0.65 0.18 230);
-  --chart-3: oklch(0.45 0.15 260);
-  --chart-4: oklch(0.7 0.15 220);
-  --chart-5: oklch(0.6 0.12 240);
-  /* Sidebar */
-  --sidebar: oklch(0.99 0.005 250);
-  --sidebar-foreground: oklch(0.2 0.02 250);
-  --sidebar-primary: oklch(0.55 0.2 250);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.96 0.02 250);
-  --sidebar-accent-foreground: oklch(0.35 0.15 250);
-  --sidebar-border: oklch(0.92 0.02 250);
-  --sidebar-ring: oklch(0.55 0.2 250);
+  --radius: 0.5rem;
+  
+  /* StoryWeave Warm Palette (Light Mode) */
+  --background: #FAF8F3; /* Cream */
+  --foreground: #2C2416; /* Deep Brown */
+  
+  --card: #FFFFFF;
+  --card-foreground: #2C2416;
+  
+  --popover: #FFFFFF;
+  --popover-foreground: #2C2416;
+  
+  --primary: #8B6F47; /* Warm Brown (Trust) */
+  --primary-foreground: #FAF8F3;
+  
+  --secondary: #C9A86A; /* Gold (Legacy) */
+  --secondary-foreground: #2C2416;
+  
+  --muted: #E8DCC4; /* Beige */
+  --muted-foreground: #6B5D4D;
+  
+  --accent: #E8DCC4; /* Beige (Calm) */
+  --accent-foreground: #2C2416;
+  
+  --destructive: #B85450; /* Muted Red */
+  --destructive-foreground: #FAF8F3;
+
+  --success: #5F8575; /* Sage Green */
+  
+  --border: #E8DCC4;
+  --input: #E8DCC4;
+  --ring: #8B6F47;
+  
+  --chart-1: #8B6F47;
+  --chart-2: #C9A86A;
+  --chart-3: #5F8575;
+  --chart-4: #B85450;
+  --chart-5: #E8DCC4;
+  
+  --sidebar: #FAF8F3;
+  --sidebar-foreground: #2C2416;
+  --sidebar-primary: #8B6F47;
+  --sidebar-primary-foreground: #FAF8F3;
+  --sidebar-accent: #E8DCC4;
+  --sidebar-accent-foreground: #2C2416;
+  --sidebar-border: #E8DCC4;
+  --sidebar-ring: #8B6F47;
+
+  /* Fonts */
+  --font-playfair: "Playfair Display", serif;
+  --font-inter: "Inter", sans-serif;
 }
 
 .dark {
-  --background: oklch(0.15 0.02 250);
-  --foreground: oklch(0.95 0.01 250);
-  --card: oklch(0.2 0.02 250);
-  --card-foreground: oklch(0.95 0.01 250);
-  --popover: oklch(0.2 0.02 250);
-  --popover-foreground: oklch(0.95 0.01 250);
-  --primary: oklch(0.65 0.18 250);
-  --primary-foreground: oklch(0.15 0.02 250);
-  --secondary: oklch(0.25 0.03 250);
-  --secondary-foreground: oklch(0.9 0.02 250);
-  --muted: oklch(0.25 0.02 250);
-  --muted-foreground: oklch(0.7 0.03 250);
-  --accent: oklch(0.3 0.04 250);
-  --accent-foreground: oklch(0.9 0.02 250);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.18 250);
-  --chart-1: oklch(0.65 0.2 250);
-  --chart-2: oklch(0.7 0.16 230);
-  --chart-3: oklch(0.55 0.14 260);
-  --chart-4: oklch(0.75 0.14 220);
-  --chart-5: oklch(0.68 0.12 240);
-  --sidebar: oklch(0.18 0.02 250);
-  --sidebar-foreground: oklch(0.95 0.01 250);
-  --sidebar-primary: oklch(0.65 0.18 250);
-  --sidebar-primary-foreground: oklch(0.95 0.01 250);
-  --sidebar-accent: oklch(0.25 0.03 250);
-  --sidebar-accent-foreground: oklch(0.9 0.02 250);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.18 250);
+  /* StoryWeave Dark Mode (Deep Brown base) */
+  --background: #1A160F; /* Darker than deep brown */
+  --foreground: #FAF8F3;
+  
+  --card: #2C2416;
+  --card-foreground: #FAF8F3;
+  
+  --popover: #2C2416;
+  --popover-foreground: #FAF8F3;
+  
+  --primary: #A38456; /* Slightly lighter warm brown */
+  --primary-foreground: #1A160F;
+  
+  --secondary: #D4B67D; /* Lighter Gold */
+  --secondary-foreground: #1A160F;
+  
+  --muted: #3D3220;
+  --muted-foreground: #C2B5A5;
+  
+  --accent: #3D3220;
+  --accent-foreground: #FAF8F3;
+  
+  --destructive: #CF6863;
+  --destructive-foreground: #FAF8F3;
+  
+  --border: #3D3220;
+  --input: #3D3220;
+  --ring: #A38456;
+  
+  --chart-1: #A38456;
+  --chart-2: #D4B67D;
+  --chart-3: #759C8C;
+  --chart-4: #CF6863;
+  --chart-5: #3D3220;
+  
+  --sidebar: #1A160F;
+  --sidebar-foreground: #FAF8F3;
+  --sidebar-primary: #A38456;
+  --sidebar-primary-foreground: #1A160F;
+  --sidebar-accent: #3D3220;
+  --sidebar-accent-foreground: #FAF8F3;
+  --sidebar-border: #3D3220;
+  --sidebar-ring: #A38456;
 }
 
 @layer base {
@@ -126,6 +151,68 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ============================================
+   Design System - Spacing Utilities
+   ============================================ */
+
+/* 
+  Consistent spacing scale for landing page sections:
+  
+  Section vertical padding:
+  - Mobile: py-16 (4rem / 64px)
+  - Tablet: py-20 (5rem / 80px)
+  - Desktop: py-24 (6rem / 96px)
+  - Large Desktop: py-32 (8rem / 128px)
+  
+  Section header margin-bottom:
+  - Mobile: mb-10 (2.5rem / 40px)
+  - Tablet: mb-12 (3rem / 48px)
+  - Desktop: mb-16 (4rem / 64px)
+  
+  Container horizontal padding:
+  - Mobile: px-4 (1rem / 16px)
+  - Tablet: px-6 (1.5rem / 24px)
+  - Desktop: px-8 (2rem / 32px)
+  
+  Card internal padding:
+  - Mobile: p-6 (1.5rem / 24px)
+  - Desktop: p-8 (2rem / 32px)
+  
+  Grid gaps:
+  - Mobile: gap-6 (1.5rem / 24px)
+  - Desktop: gap-8 (2rem / 32px)
+  
+  Button heights:
+  - Mobile: h-11 (2.75rem / 44px)
+  - Tablet: h-12 (3rem / 48px)
+  - Desktop: h-14 (3.5rem / 56px)
+*/
+
+/* Standard section wrapper */
+.section-wrapper {
+  @apply py-16 md:py-20 lg:py-24 xl:py-32;
+}
+
+/* Standard section container */
+.section-container {
+  @apply container mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Standard section header spacing */
+.section-header {
+  @apply text-center max-w-3xl mx-auto mb-10 md:mb-12 lg:mb-16;
+}
+
+/* Standard card padding */
+.card-padding {
+  @apply p-6 lg:p-8;
+}
+
+/* Standard grid gaps */
+.grid-gap-standard {
+  @apply gap-6 lg:gap-8;
 }
 
 

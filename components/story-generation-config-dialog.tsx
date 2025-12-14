@@ -102,19 +102,19 @@ const DEFAULT_CONFIG: GenerationConfig = {
 function calculateEstimatedTime(config: GenerationConfig): number {
   // Base time per page (in seconds)
   const baseTimePerPage = 30;
-  
+
   // Additional time for AI images (in seconds)
   const imageGenerationTime = config.includeAIImages ? 45 : 0;
-  
+
   // Additional time for grammar improvement (in seconds)
   const grammarTime = config.improveGrammar ? 15 : 0;
-  
+
   // Calculate total time in seconds
-  const totalSeconds = 
-    (config.numberOfPages * baseTimePerPage) + 
-    (config.includeAIImages ? config.numberOfPages * imageGenerationTime : 0) + 
+  const totalSeconds =
+    (config.numberOfPages * baseTimePerPage) +
+    (config.includeAIImages ? config.numberOfPages * imageGenerationTime : 0) +
     grammarTime;
-  
+
   // Convert to minutes and round up
   return Math.max(1, Math.ceil(totalSeconds / 60));
 }
@@ -159,8 +159,14 @@ export function StoryGenerationConfigDialog({
   // Calculate estimated time based on current config
   const estimatedTime = useMemo(() => calculateEstimatedTime(config), [config]);
 
-  // Determine the API endpoint
-  const endpoint = submitEndpoint || `/api/stories/${storyId}/submit`;
+  // Determine the API endpoint based on story type
+  // - life_story uses /submit (validates stages first)
+  // - blog_story uses /generate (works directly with content)
+  const endpoint = submitEndpoint || (
+    storyType === "life_story"
+      ? `/api/stories/${storyId}/submit`
+      : `/api/stories/${storyId}/generate`
+  );
 
   // Submit mutation
   const submitMutation = useMutation({
@@ -237,8 +243,8 @@ export function StoryGenerationConfigDialog({
     setConfig((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const dialogTitle = storyType === "life_story" 
-    ? "Generate Your Life Story" 
+  const dialogTitle = storyType === "life_story"
+    ? "Generate Your Life Story"
     : "Generate Your Story";
 
   const dialogDescription = storyType === "life_story"

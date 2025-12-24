@@ -22,9 +22,11 @@ import {
   MicOff,
   Languages,
   AlertCircle,
-  Volume2,
   Settings2,
   X,
+  Pause,
+  Play,
+  Square,
 } from "lucide-react";
 import { SUPPORTED_STT_LANGUAGES } from "@/lib/ai/constants";
 
@@ -38,11 +40,61 @@ interface VoiceInputProps {
 
 interface VoiceInputState {
   isRecording: boolean;
+  isPaused: boolean;
   isSupported: boolean;
   error: string | null;
   interimTranscript: string;
   selectedLanguage: string;
-  audioLevel: number;
+  frequencyData: number[];
+}
+
+// Waveform visualization component
+function WaveformVisualizer({
+  frequencyData,
+  isActive
+}: {
+  frequencyData: number[];
+  isActive: boolean;
+}) {
+  const barCount = 24;
+
+  return (
+    <div className="flex items-center gap-0.5 h-8 px-2">
+      {Array.from({ length: barCount }).map((_, i) => {
+        // Get frequency value for this bar (sample from frequency data)
+        const dataIndex = Math.floor((i / barCount) * frequencyData.length);
+        const value = isActive ? (frequencyData[dataIndex] || 0) : 0;
+        const height = Math.max(4, (value / 255) * 28);
+
+        return (
+          <div
+            key={i}
+            className={cn(
+              "w-1 rounded-full transition-all duration-75",
+              isActive
+                ? "bg-gradient-to-t from-red-500 to-orange-400"
+                : "bg-muted-foreground/30"
+            )}
+            style={{
+              height: `${height}px`,
+              opacity: isActive ? 0.8 + (value / 255) * 0.2 : 0.3
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// Typing indicator component
+function TypingIndicator() {
+  return (
+    <span className="inline-flex items-center gap-0.5 ml-1">
+      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+    </span>
+  );
 }
 
 export function VoiceInput({
@@ -54,11 +106,12 @@ export function VoiceInput({
 }: VoiceInputProps) {
   const [state, setState] = useState<VoiceInputState>({
     isRecording: false,
+    isPaused: false,
     isSupported: true,
     error: null,
     interimTranscript: "",
     selectedLanguage: defaultLanguage,
-    audioLevel: 0,
+    frequencyData: new Array(64).fill(0),
   });
 
   const recognitionRef = useRef<any>(null);
@@ -100,22 +153,22 @@ export function VoiceInput({
     };
   }, []);
 
-  const updateAudioLevel = useCallback(() => {
+  const updateFrequencyData = useCallback(() => {
     if (!analyserRef.current) return;
 
     const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
     analyserRef.current.getByteFrequencyData(dataArray);
 
-    // Calculate average volume level
-    const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-    const normalizedLevel = Math.min(100, (average / 128) * 100);
+    // Convert to regular array for state
+    setState((prev) => ({
+      ...prev,
+      frequencyData: Array.from(dataArray.slice(0, 64))
+    }));
 
-    setState((prev) => ({ ...prev, audioLevel: normalizedLevel }));
-
-    if (state.isRecording) {
-      animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+    if (state.isRecording && !state.isPaused) {
+      animationFrameRef.current = requestAnimationFrame(updateFrequencyData);
     }
-  }, [state.isRecording]);
+  }, [state.isRecording, state.isPaused]);
 
   const startRecording = useCallback(async () => {
     if (!state.isSupported || disabled) return;
@@ -124,6 +177,7 @@ export function VoiceInput({
       ...prev,
       error: null,
       interimTranscript: "",
+      isPaused: false,
     }));
 
     try {
@@ -138,13 +192,14 @@ export function VoiceInput({
 
       streamRef.current = stream;
 
-      // Set up audio level monitoring
+      // Set up audio analysis for waveform
       try {
         audioContextRef.current = new AudioContext();
         analyserRef.current = audioContextRef.current.createAnalyser();
         const source = audioContextRef.current.createMediaStreamSource(stream);
         source.connect(analyserRef.current);
-        analyserRef.current.fftSize = 256;
+        analyserRef.current.fftSize = 128;
+        analyserRef.current.smoothingTimeConstant = 0.4;
       } catch (audioErr) {
         console.warn("[VOICE_INPUT] Audio level monitoring not available:", audioErr);
       }
@@ -162,9 +217,9 @@ export function VoiceInput({
 
       recognition.onstart = () => {
         setState((prev) => ({ ...prev, isRecording: true }));
-        // Start audio level monitoring
+        // Start frequency data monitoring
         if (analyserRef.current) {
-          animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+          animationFrameRef.current = requestAnimationFrame(updateFrequencyData);
         }
       };
 
@@ -191,7 +246,7 @@ export function VoiceInput({
 
       recognition.onerror = (event: any) => {
         console.error("[VOICE_INPUT] Recognition error:", event.error);
-        
+
         let errorMessage = "Voice recognition error";
         switch (event.error) {
           case "no-speech":
@@ -218,14 +273,13 @@ export function VoiceInput({
           error: errorMessage,
           isRecording: false,
         }));
-        
+
         stopRecording();
       };
 
       recognition.onend = () => {
         // Only update state if we're still supposed to be recording
-        // (prevents state update after intentional stop)
-        if (recognitionRef.current === recognition) {
+        if (recognitionRef.current === recognition && !state.isPaused) {
           setState((prev) => ({ ...prev, isRecording: false }));
         }
       };
@@ -234,7 +288,7 @@ export function VoiceInput({
       recognition.start();
     } catch (err) {
       console.error("[VOICE_INPUT] Failed to start recording:", err);
-      
+
       let errorMessage = "Failed to start voice input";
       if (err instanceof Error) {
         if (err.name === "NotAllowedError") {
@@ -252,7 +306,7 @@ export function VoiceInput({
         isRecording: false,
       }));
     }
-  }, [state.isSupported, state.selectedLanguage, disabled, onTranscript, updateAudioLevel]);
+  }, [state.isSupported, state.selectedLanguage, state.isPaused, disabled, onTranscript, updateFrequencyData]);
 
   const stopRecording = useCallback(() => {
     // Stop speech recognition
@@ -265,7 +319,7 @@ export function VoiceInput({
       recognitionRef.current = null;
     }
 
-    // Stop audio level monitoring
+    // Stop frequency data monitoring
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -291,10 +345,100 @@ export function VoiceInput({
     setState((prev) => ({
       ...prev,
       isRecording: false,
-      audioLevel: 0,
+      isPaused: false,
+      frequencyData: new Array(64).fill(0),
       interimTranscript: "",
     }));
   }, []);
+
+  const pauseRecording = useCallback(() => {
+    if (!state.isRecording || state.isPaused) return;
+
+    // Pause speech recognition
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.warn("[VOICE_INPUT] Error pausing recognition:", err);
+      }
+    }
+
+    // Stop frequency animation
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      isPaused: true,
+      frequencyData: new Array(64).fill(0),
+    }));
+  }, [state.isRecording, state.isPaused]);
+
+  const resumeRecording = useCallback(async () => {
+    if (!state.isRecording || !state.isPaused) return;
+
+    try {
+      // Re-initialize speech recognition
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = state.selectedLanguage;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        setState((prev) => ({ ...prev, interimTranscript }));
+
+        if (finalTranscript) {
+          onTranscript(finalTranscript);
+          setState((prev) => ({ ...prev, interimTranscript: "" }));
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        if (event.error !== "aborted") {
+          console.error("[VOICE_INPUT] Recognition error:", event.error);
+          stopRecording();
+        }
+      };
+
+      recognition.onend = () => {
+        if (recognitionRef.current === recognition && !state.isPaused) {
+          setState((prev) => ({ ...prev, isRecording: false }));
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+
+      setState((prev) => ({ ...prev, isPaused: false }));
+
+      // Resume frequency monitoring
+      if (analyserRef.current) {
+        animationFrameRef.current = requestAnimationFrame(updateFrequencyData);
+      }
+    } catch (err) {
+      console.error("[VOICE_INPUT] Failed to resume recording:", err);
+      stopRecording();
+    }
+  }, [state.isRecording, state.isPaused, state.selectedLanguage, onTranscript, stopRecording, updateFrequencyData]);
 
   const toggleRecording = useCallback(() => {
     if (state.isRecording) {
@@ -306,12 +450,12 @@ export function VoiceInput({
 
   const handleLanguageChange = useCallback((languageCode: string) => {
     setState((prev) => ({ ...prev, selectedLanguage: languageCode }));
-    
+
     // Persist language preference
     if (typeof window !== "undefined") {
       localStorage.setItem("voice-input-language", languageCode);
     }
-    
+
     // If currently recording, restart with new language
     if (state.isRecording) {
       stopRecording();
@@ -349,7 +493,7 @@ export function VoiceInput({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Main Voice Button */}
         <Button
           type="button"
@@ -358,14 +502,17 @@ export function VoiceInput({
           onClick={toggleRecording}
           disabled={disabled}
           className={cn(
-            "h-8 gap-1 transition-all",
-            state.isRecording && "animate-pulse"
+            "h-9 gap-1.5 transition-all",
+            state.isRecording && "shadow-lg shadow-red-500/25"
           )}
         >
           {state.isRecording ? (
             <>
-              <MicOff className="h-4 w-4" />
-              {!compact && <span>Stop</span>}
+              <div className="relative">
+                <Mic className="h-4 w-4" />
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-white rounded-full animate-ping" />
+              </div>
+              {!compact && <span>Recording</span>}
             </>
           ) : (
             <>
@@ -375,6 +522,36 @@ export function VoiceInput({
           )}
         </Button>
 
+        {/* Pause/Resume and Stop buttons (visible when recording) */}
+        {state.isRecording && (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={state.isPaused ? resumeRecording : pauseRecording}
+              className="h-9 w-9 p-0"
+              title={state.isPaused ? "Resume" : "Pause"}
+            >
+              {state.isPaused ? (
+                <Play className="h-4 w-4 text-green-600" />
+              ) : (
+                <Pause className="h-4 w-4 text-yellow-600" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={stopRecording}
+              className="h-9 w-9 p-0"
+              title="Stop"
+            >
+              <Square className="h-4 w-4 text-red-600" />
+            </Button>
+          </div>
+        )}
+
         {/* Language Selector */}
         <Popover>
           <PopoverTrigger asChild>
@@ -382,7 +559,7 @@ export function VoiceInput({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-8 gap-1 px-2"
+              className="h-9 gap-1 px-2"
               disabled={disabled}
             >
               <Languages className="h-4 w-4" />
@@ -426,30 +603,43 @@ export function VoiceInput({
           </PopoverContent>
         </Popover>
 
-        {/* Recording Indicator */}
+        {/* Waveform Visualizer (visible when recording) */}
         {state.isRecording && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <Volume2 className="h-4 w-4 text-red-500 animate-pulse" />
-              <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-red-500 transition-all duration-100"
-                  style={{ width: `${state.audioLevel}%` }}
-                />
-              </div>
-            </div>
-            <Badge variant="destructive" className="text-xs animate-pulse">
-              Recording
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-1">
+            <WaveformVisualizer
+              frequencyData={state.frequencyData}
+              isActive={!state.isPaused}
+            />
+            <Badge
+              variant={state.isPaused ? "secondary" : "destructive"}
+              className="text-xs"
+            >
+              {state.isPaused ? "Paused" : "Live"}
             </Badge>
           </div>
         )}
       </div>
 
-      {/* Interim Transcript Display */}
-      {state.interimTranscript && (
-        <div className="px-3 py-2 bg-muted/50 rounded-md border border-dashed">
-          <p className="text-sm text-muted-foreground italic">
-            {state.interimTranscript}
+      {/* Real-time Interim Transcript Display */}
+      {(state.interimTranscript || (state.isRecording && !state.isPaused)) && (
+        <div className="relative px-4 py-3 bg-gradient-to-r from-muted/80 to-muted/50 rounded-lg border border-dashed border-primary/30">
+          <div className="absolute top-2 right-2">
+            <Badge variant="outline" className="text-xs gap-1">
+              <Mic className="h-3 w-3" />
+              Listening
+            </Badge>
+          </div>
+          <p className="text-sm text-foreground pr-20 min-h-[1.5rem]">
+            {state.interimTranscript ? (
+              <>
+                <span className="font-medium">{state.interimTranscript}</span>
+                <TypingIndicator />
+              </>
+            ) : (
+              <span className="text-muted-foreground italic">
+                Speak now in {selectedLanguageInfo?.nativeName || "your language"}...
+              </span>
+            )}
           </p>
         </div>
       )}

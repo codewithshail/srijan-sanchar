@@ -10,18 +10,38 @@ export default function AdminDashboardPage() {
     <div className="container py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       <Tabs defaultValue="users" className="w-full">
-        <TabsList>
-          <TabsTrigger value="users"><Users className="mr-2 h-4 w-4" /> User Management</TabsTrigger>
-          <TabsTrigger value="stories"><BookCopy className="mr-2 h-4 w-4" /> Story Overview</TabsTrigger>
-          <TabsTrigger value="print-orders"><Package className="mr-2 h-4 w-4" /> Print Orders</TabsTrigger>
-          <TabsTrigger value="jobs"><Briefcase className="mr-2 h-4 w-4" /> Jobs</TabsTrigger>
-          <TabsTrigger value="moderation"><Shield className="mr-2 h-4 w-4" /> Moderation</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-2 px-2 pb-2">
+          <TabsList className="inline-flex min-w-max">
+            <TabsTrigger value="users" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">User Management</span>
+              <span className="sm:hidden">Users</span>
+            </TabsTrigger>
+            <TabsTrigger value="stories" className="gap-1.5">
+              <BookCopy className="h-4 w-4" />
+              <span className="hidden sm:inline">Story Overview</span>
+              <span className="sm:hidden">Stories</span>
+            </TabsTrigger>
+            <TabsTrigger value="print-orders" className="gap-1.5">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Print Orders</span>
+              <span className="sm:hidden">Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="jobs" className="gap-1.5">
+              <Briefcase className="h-4 w-4" />
+              <span className="hidden sm:inline">Jobs</span>
+            </TabsTrigger>
+            <TabsTrigger value="moderation" className="gap-1.5">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Moderation</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="users">
-            <UsersTable />
+          <UsersTable />
         </TabsContent>
         <TabsContent value="stories">
-            <StoriesTable />
+          <StoriesTable />
         </TabsContent>
         <TabsContent value="print-orders">
           <div className="py-4">

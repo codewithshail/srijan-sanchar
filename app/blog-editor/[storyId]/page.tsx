@@ -474,24 +474,26 @@ export default function BlogEditorPage() {
   return (
     <div className="container max-w-4xl py-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" asChild>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <Button variant="ghost" asChild className="w-fit">
           <Link href="/dashboard">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </Link>
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handlePreview} disabled={!title.trim()}>
-            <Eye className="mr-2 h-4 w-4" />
-            Preview Story
+          <Button variant="outline" onClick={handlePreview} disabled={!title.trim()} size="sm">
+            <Eye className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Preview Story</span>
           </Button>
           <Button
             onClick={() => setShowGenerationDialog(true)}
             disabled={!title.trim() || !content.trim()}
+            size="sm"
           >
-            <Send className="mr-2 h-4 w-4" />
-            Generate Story
+            <Send className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Generate Story</span>
           </Button>
         </div>
       </div>
@@ -559,12 +561,12 @@ export default function BlogEditorPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             <Input
               placeholder="Enter your story title..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-lg font-semibold"
+              className="text-lg font-semibold flex-1"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -577,8 +579,10 @@ export default function BlogEditorPage() {
               loading={isSavingTitle}
               loadingText="Saving..."
               disabled={!title.trim()}
+              className="shrink-0"
             >
-              Save Title
+              <span className="hidden sm:inline">Save Title</span>
+              <span className="sm:hidden">Save</span>
             </LoadingButton>
           </div>
         </CardContent>
@@ -624,7 +628,8 @@ export default function BlogEditorPage() {
                 disabled={!description.trim()}
                 size="sm"
               >
-                Save Description
+                <span className="hidden sm:inline">Save Description</span>
+                <span className="sm:hidden">Save</span>
               </LoadingButton>
             </div>
           </div>

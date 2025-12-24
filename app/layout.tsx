@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import Providers from "./providers";
 import SiteHeader from "@/components/site-header";
+import BreadcrumbNav from "@/components/BreadcrumbNav";
 import { Toaster } from "@/components/ui/sonner";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
@@ -51,6 +52,7 @@ export default async function RootLayout({
               <Providers>
                 <div className="relative flex min-h-screen flex-col bg-background">
                   <main className="flex-1 w-full overflow-x-hidden">
+                    <BreadcrumbNav />
                     {children}
                   </main>
                 </div>

@@ -76,7 +76,7 @@ type UserAppointment = {
 
 export default function DashboardPage() {
   const qc = useQueryClient();
-  
+
   const { data: stats, isLoading: isLoadingStats } = useQuery<DashboardStats>({
     queryKey: ["dashboardStats"],
     queryFn: async () => {
@@ -238,165 +238,172 @@ export default function DashboardPage() {
       </div>
 
       <Tabs defaultValue="stories" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
-          <TabsTrigger value="stories">Stories</TabsTrigger>
-          <TabsTrigger value="liked">Liked</TabsTrigger>
-          <TabsTrigger value="appointments">Expert Sessions</TabsTrigger>
-          <TabsTrigger value="print-orders">Print Orders</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex min-w-max lg:grid lg:w-auto lg:grid-cols-5">
+            <TabsTrigger value="stories">Stories</TabsTrigger>
+            <TabsTrigger value="liked">Liked</TabsTrigger>
+            <TabsTrigger value="appointments">
+              <span className="hidden sm:inline">Expert Sessions</span>
+              <span className="sm:hidden">Sessions</span>
+            </TabsTrigger>
+            <TabsTrigger value="print-orders">
+              <span className="hidden sm:inline">Print Orders</span>
+              <span className="sm:hidden">Orders</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="stories" className="space-y-6">
 
-        {isLoading && <p>Loading your stories...</p>}
+          {isLoading && <p>Loading your stories...</p>}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {stories?.map((story) => (
-            <Card
-              key={story.id}
-              className="h-full hover:border-primary transition-colors"
-            >
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle>{story.title ?? "Untitled Story"}</CardTitle>
-                  <CardDescription className="space-y-1">
-                    <div>
-                      Status:{" "}
-                      <span
-                        className={`font-semibold ${
-                          story.status === "completed" || story.status === "published"
-                            ? "text-green-500"
-                            : "text-yellow-500"
-                        }`}
-                      >
-                        {story.status}
-                      </span>
-                    </div>
-                    <div>
-                      Type:{" "}
-                      <span className="font-semibold text-primary">
-                        {story.storyType === "blog_story" ? "Creative Story" : "Life Story"}
-                      </span>
-                    </div>
-                    {story.status === "published" && (
-                      <div className="flex items-center gap-3 text-xs">
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-3 w-3" />
-                          <span>{story.viewCount || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Headphones className="h-3 w-3" />
-                          <span>{story.listenCount || 0}</span>
-                        </div>
-                      </div>
-                    )}
-                  </CardDescription>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
-                        const t = prompt("New title:", story.title || "");
-                        if (t !== null)
-                          renameMutation.mutate({ id: story.id, title: t });
-                      }}
-                    >
-                      <Edit3 className="mr-2 h-4 w-4" /> Rename
-                    </DropdownMenuItem>
-                    {story.status === "published" && (
-                      <>
-                        <Link href={`/analytics/${story.id}`}>
-                          <DropdownMenuItem>
-                            <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
-                          </DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuItem
-                          onClick={() => {
-                            const url = `${window.location.origin}/story/${story.id}`;
-                            navigator.clipboard.writeText(url);
-                            toast.success("Story link copied to clipboard!");
-                          }}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {stories?.map((story) => (
+              <Card
+                key={story.id}
+                className="h-full hover:border-primary transition-colors"
+              >
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div>
+                    <CardTitle>{story.title ?? "Untitled Story"}</CardTitle>
+                    <CardDescription className="space-y-1">
+                      <div>
+                        Status:{" "}
+                        <span
+                          className={`font-semibold ${story.status === "completed" || story.status === "published"
+                              ? "text-green-500"
+                              : "text-yellow-500"
+                            }`}
                         >
-                          <Share2 className="mr-2 h-4 w-4" /> Share Story
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {(story.status === "completed" || story.status === "published") && (
-                      <PrintOrderDialog
-                        storyId={story.id}
-                        storyTitle={story.title || "Untitled Story"}
-                        trigger={
-                          <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                            <Package className="mr-2 h-4 w-4" /> Order Print Copy
+                          {story.status}
+                        </span>
+                      </div>
+                      <div>
+                        Type:{" "}
+                        <span className="font-semibold text-primary">
+                          {story.storyType === "blog_story" ? "Creative Story" : "Life Story"}
+                        </span>
+                      </div>
+                      {story.status === "published" && (
+                        <div className="flex items-center gap-3 text-xs">
+                          <div className="flex items-center gap-1">
+                            <Eye className="h-3 w-3" />
+                            <span>{story.viewCount || 0}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Headphones className="h-3 w-3" />
+                            <span>{story.listenCount || 0}</span>
+                          </div>
+                        </div>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const t = prompt("New title:", story.title || "");
+                          if (t !== null)
+                            renameMutation.mutate({ id: story.id, title: t });
+                        }}
+                      >
+                        <Edit3 className="mr-2 h-4 w-4" /> Rename
+                      </DropdownMenuItem>
+                      {story.status === "published" && (
+                        <>
+                          <Link href={`/analytics/${story.id}`}>
+                            <DropdownMenuItem>
+                              <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+                            </DropdownMenuItem>
+                          </Link>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const url = `${window.location.origin}/story/${story.id}`;
+                              navigator.clipboard.writeText(url);
+                              toast.success("Story link copied to clipboard!");
+                            }}
+                          >
+                            <Share2 className="mr-2 h-4 w-4" /> Share Story
                           </DropdownMenuItem>
+                        </>
+                      )}
+                      {(story.status === "completed" || story.status === "published") && (
+                        <PrintOrderDialog
+                          storyId={story.id}
+                          storyTitle={story.title || "Untitled Story"}
+                          trigger={
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Package className="mr-2 h-4 w-4" /> Order Print Copy
+                            </DropdownMenuItem>
+                          }
+                        />
+                      )}
+                      <DropdownMenuItem
+                        onClick={() => unpublishMutation.mutate(story.id)}
+                      >
+                        <EyeOff className="mr-2 h-4 w-4" /> Set Private
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => deleteMutation.mutate(story.id)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Last updated: {new Date(story.updatedAt).toLocaleDateString()}
+                  </p>
+                  <div className="flex gap-2">
+                    <Link
+                      className="w-full"
+                      href={
+                        story.status === "draft"
+                          ? story.storyType === "blog_story"
+                            ? `/blog-editor/${story.id}`
+                            : `/life-story/${story.id}`
+                          : `/story/${story.id}`
+                      }
+                    >
+                      <Button
+                        variant={
+                          story.status === "completed" || story.status === "published" ? "default" : "secondary"
                         }
-                      />
-                    )}
-                    <DropdownMenuItem
-                      onClick={() => unpublishMutation.mutate(story.id)}
-                    >
-                      <EyeOff className="mr-2 h-4 w-4" /> Set Private
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => deleteMutation.mutate(story.id)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Last updated: {new Date(story.updatedAt).toLocaleDateString()}
-                </p>
-                <div className="flex gap-2">
-                  <Link
-                    className="w-full"
-                    href={
-                      story.status === "draft"
-                        ? story.storyType === "blog_story" 
+                        className="w-full"
+                      >
+                        {story.status === "completed" || story.status === "published" ? "View" : "Continue"}
+                      </Button>
+                    </Link>
+                    <Link
+                      className="w-full"
+                      href={
+                        story.storyType === "blog_story"
                           ? `/blog-editor/${story.id}`
                           : `/life-story/${story.id}`
-                        : `/story/${story.id}`
-                    }
-                  >
-                    <Button
-                      variant={
-                        story.status === "completed" || story.status === "published" ? "default" : "secondary"
                       }
-                      className="w-full"
                     >
-                      {story.status === "completed" || story.status === "published" ? "View" : "Continue"}
-                    </Button>
-                  </Link>
-                  <Link 
-                    className="w-full" 
-                    href={
-                      story.storyType === "blog_story" 
-                        ? `/blog-editor/${story.id}` 
-                        : `/life-story/${story.id}`
-                    }
-                  >
-                    <Button variant="outline" className="w-full">Editor</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {!isLoading && stories?.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <h2 className="text-2xl font-semibold">No stories yet</h2>
-              <p className="text-muted-foreground mt-2">
-                Start a new story to begin your journey.
-              </p>
-            </div>
-          )}
-        </div>
+                      <Button variant="outline" className="w-full">Editor</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {!isLoading && stories?.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <h2 className="text-2xl font-semibold">No stories yet</h2>
+                <p className="text-muted-foreground mt-2">
+                  Start a new story to begin your journey.
+                </p>
+              </div>
+            )}
+          </div>
         </TabsContent>
 
         <TabsContent value="liked" className="space-y-6">
@@ -421,7 +428,7 @@ export default function DashboardPage() {
 
         <TabsContent value="appointments" className="space-y-6">
           {isLoadingAppointments && <p>Loading your expert sessions...</p>}
-          
+
           {!isLoadingAppointments && appointments?.length === 0 && (
             <div className="text-center py-12">
               <h2 className="text-2xl font-semibold">No Expert Sessions</h2>
@@ -441,22 +448,21 @@ export default function DashboardPage() {
                         Expert Session for: {appointment.story.title || "Untitled Story"}
                       </CardTitle>
                       <CardDescription className="mt-1">
-                        Status: <span className={`font-semibold ${
-                          appointment.status === "confirmed" ? "text-green-600" :
-                          appointment.status === "pending" ? "text-yellow-600" :
-                          appointment.status === "completed" ? "text-blue-600" :
-                          appointment.status === "rejected" ? "text-red-600" :
-                          "text-gray-600"
-                        }`}>
+                        Status: <span className={`font-semibold ${appointment.status === "confirmed" ? "text-green-600" :
+                            appointment.status === "pending" ? "text-yellow-600" :
+                              appointment.status === "completed" ? "text-blue-600" :
+                                appointment.status === "rejected" ? "text-red-600" :
+                                  "text-gray-600"
+                          }`}>
                           {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                         </span>
                       </CardDescription>
                     </div>
                     <Badge variant={
                       appointment.status === "confirmed" ? "default" :
-                      appointment.status === "pending" ? "secondary" :
-                      appointment.status === "completed" ? "outline" :
-                      "destructive"
+                        appointment.status === "pending" ? "secondary" :
+                          appointment.status === "completed" ? "outline" :
+                            "destructive"
                     }>
                       {appointment.status}
                     </Badge>
@@ -471,7 +477,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
                   )}
-                  
+
                   {appointment.googleMeetLink && (
                     <div className="flex gap-2">
                       <Button asChild size="sm">
@@ -481,7 +487,7 @@ export default function DashboardPage() {
                       </Button>
                     </div>
                   )}
-                  
+
                   {appointment.psychiatristFeedback && (
                     <div className="bg-muted p-3 rounded-lg">
                       <h4 className="font-semibold text-sm mb-2">Expert Feedback:</h4>
@@ -490,7 +496,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="text-xs text-muted-foreground">
                     Requested: {new Date(appointment.createdAt).toLocaleDateString()}
                   </div>

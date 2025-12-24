@@ -38,7 +38,7 @@ export function StageEditor({
   const stage = getStageById(stageId);
   const prompts = getStagePrompts(stageId);
   const [showPrompts, setShowPrompts] = useState(false);
-  
+
   // AI features state
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [currentAIAction, setCurrentAIAction] = useState<AIAction | null>(null);
@@ -46,14 +46,14 @@ export function StageEditor({
   const [suggestions, setSuggestions] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [previousContent, setPreviousContent] = useState<string | null>(null);
-  
+
   // Voice input language preference (persisted in localStorage)
   const [voiceLanguage, setVoiceLanguage] = useState<string>("en-IN");
 
   const stageIndex = LIFE_STAGES.findIndex((s) => s.id === stageId);
   const hasPrev = stageIndex > 0;
   const hasNext = stageIndex < LIFE_STAGES.length - 1;
-  
+
   // Load voice language preference from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -126,7 +126,7 @@ export function StageEditor({
           // Save previous content for undo
           setPreviousContent(content);
           onContentChange(data.result);
-          
+
           const actionLabels: Record<AIAction, string> = {
             rewrite: "Content rewritten",
             grammar: "Grammar improved",
@@ -327,15 +327,17 @@ export function StageEditor({
 
       {/* Footer Actions */}
       <div className="p-4 border-t bg-muted/30">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-2">
           <Button
             variant="ghost"
             onClick={() => onNavigate("prev")}
             disabled={!hasPrev}
             className="gap-1"
+            size="sm"
           >
             <ChevronLeft className="h-4 w-4" />
-            Previous Stage
+            <span className="hidden sm:inline">Previous Stage</span>
+            <span className="sm:hidden">Prev</span>
           </Button>
 
           <LoadingButton
@@ -343,8 +345,10 @@ export function StageEditor({
             loading={isSaving}
             disabled={!hasUnsavedChanges}
             icon={<Save className="h-4 w-4" />}
+            size="sm"
           >
-            Save Stage
+            <span className="hidden sm:inline">Save Stage</span>
+            <span className="sm:hidden">Save</span>
           </LoadingButton>
 
           <Button
@@ -352,8 +356,10 @@ export function StageEditor({
             onClick={() => onNavigate("next")}
             disabled={!hasNext}
             className="gap-1"
+            size="sm"
           >
-            Next Stage
+            <span className="hidden sm:inline">Next Stage</span>
+            <span className="sm:hidden">Next</span>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

@@ -1,9 +1,15 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Hero3DContainer from "@/components/Hero3DContainer";
+import { StartWritingDialog } from "@/components/StartWritingDialog";
 
 export default function Hero() {
+  const [showDialog, setShowDialog] = useState(false);
+
   return (
     <section className="relative pt-20 md:pt-24 lg:pt-28 pb-12 md:pb-16 lg:pb-20 overflow-hidden">
       {/* Background decorations */}
@@ -30,22 +36,21 @@ export default function Hero() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link href="/sign-up">
-                <Button 
-                  size="lg" 
-                  className="w-full sm:w-auto h-11 sm:h-12 lg:h-14 px-6 sm:px-8 text-base sm:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all"
-                >
-                  Start Your Journey
-                  <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
-                </Button>
-              </Link>
-              <Link href="#how-it-works">
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+              <Button
+                size="lg"
+                onClick={() => setShowDialog(true)}
+                className="w-full sm:w-auto h-11 sm:h-12 lg:h-14 px-6 sm:px-8 text-base sm:text-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl transition-all"
+              >
+                Start Writing Story
+                <ArrowRight className="ml-2 w-4 h-4 sm:w-5 sm:h-5" />
+              </Button>
+              <Link href="/stories/public">
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="w-full sm:w-auto h-11 sm:h-12 lg:h-14 px-6 sm:px-8 text-base sm:text-lg border-2 border-border hover:bg-accent/50 text-foreground"
                 >
-                  How It Works
+                  Explore Stories
                 </Button>
               </Link>
             </div>
@@ -75,6 +80,9 @@ export default function Hero() {
           </div>
         </div>
       </div>
+
+      {/* Destination Choice Dialog */}
+      <StartWritingDialog open={showDialog} onOpenChange={setShowDialog} />
     </section>
   );
 }

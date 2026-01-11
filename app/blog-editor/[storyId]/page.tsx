@@ -26,6 +26,7 @@ import { CreativeAIToolbar, type AIAction } from "@/components/creative-story";
 import { VoiceInput } from "@/components/life-story/voice-input";
 import { StoryGenerationConfigDialog } from "@/components/story-generation-config-dialog";
 import { toast } from "sonner";
+import { useOnboardingTour, TOUR_STEPS } from "@/lib/hooks/use-onboarding-tour";
 
 interface BlogStory {
   id: string;
@@ -67,6 +68,13 @@ export default function BlogEditorPage() {
 
   // Generation dialog state
   const [showGenerationDialog, setShowGenerationDialog] = useState(false);
+
+  // Onboarding tour
+  useOnboardingTour({
+    tourId: "blog-editor",
+    steps: TOUR_STEPS.blogEditor,
+    delay: 1000,
+  });
 
   // Load voice language preference from localStorage
   useEffect(() => {
@@ -447,7 +455,7 @@ export default function BlogEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="container max-w-4xl py-8 flex justify-center">
+      <div className="container max-w-5xl py-8 flex justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -455,7 +463,7 @@ export default function BlogEditorPage() {
 
   if (!story) {
     return (
-      <div className="container max-w-4xl py-8">
+      <div className="container max-w-5xl py-8">
         <Card>
           <CardHeader>
             <CardTitle>Story Not Found</CardTitle>
@@ -472,7 +480,7 @@ export default function BlogEditorPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8 space-y-6">
+    <div className="container max-w-5xl py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Button variant="ghost" asChild className="w-fit">
@@ -488,6 +496,7 @@ export default function BlogEditorPage() {
             <span className="hidden sm:inline">Preview Story</span>
           </Button>
           <Button
+            id="editor-generate"
             onClick={() => setShowGenerationDialog(true)}
             disabled={!title.trim() || !content.trim()}
             size="sm"
@@ -543,7 +552,7 @@ export default function BlogEditorPage() {
       )}
 
       {/* Title Editor */}
-      <Card>
+      <Card id="editor-title">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Story Title</CardTitle>
@@ -589,7 +598,7 @@ export default function BlogEditorPage() {
       </Card>
 
       {/* Auto-generated Description */}
-      <Card>
+      <Card id="editor-description">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -654,13 +663,15 @@ export default function BlogEditorPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <CreativeAIToolbar
-            onAction={handleAIAction}
-            disabled={isAIProcessing}
-            isProcessing={isAIProcessing}
-            currentAction={currentAIAction}
-            hasContent={content.trim().length > 0}
-          />
+          <span id="editor-ai-toolbar">
+            <CreativeAIToolbar
+              onAction={handleAIAction}
+              disabled={isAIProcessing}
+              isProcessing={isAIProcessing}
+              currentAction={currentAIAction}
+              hasContent={content.trim().length > 0}
+            />
+          </span>
           {previousContent !== null && (
             <Button
               type="button"
@@ -673,17 +684,19 @@ export default function BlogEditorPage() {
               <span className="hidden sm:inline">Undo AI</span>
             </Button>
           )}
-          <VoiceInput
-            onTranscript={handleVoiceTranscript}
-            disabled={isAIProcessing}
-            defaultLanguage={voiceLanguage}
-            compact
-          />
+          <span id="editor-voice-input">
+            <VoiceInput
+              onTranscript={handleVoiceTranscript}
+              disabled={isAIProcessing}
+              defaultLanguage={voiceLanguage}
+              compact
+            />
+          </span>
         </div>
       </div>
 
       {/* Content Editor */}
-      <Card>
+      <Card id="editor-content">
         <CardHeader>
           <CardTitle>Story Content</CardTitle>
         </CardHeader>

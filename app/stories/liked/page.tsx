@@ -34,7 +34,7 @@ export default function LikedStoriesPage() {
   });
 
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Navigation */}
       <div className="mb-6">
         <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -53,14 +53,14 @@ export default function LikedStoriesPage() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 6 }).map((_, i) => <StorySkeleton key={i} />)}
         </div>
       )}
-      
+
       {/* Stories Grid */}
       {!isLoading && stories && stories.length > 0 && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {stories.map(story => (
             <StoryCard key={story.id} story={story} />
           ))}
@@ -103,14 +103,14 @@ function StoryCard({ story }: { story: LikedStory }) {
         {/* Thumbnail Image */}
         {story.thumbnailImageUrl && (
           <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-            <img 
-              src={story.thumbnailImageUrl} 
+            <img
+              src={story.thumbnailImageUrl}
               alt={story.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             />
           </div>
         )}
-        
+
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2 mb-2">
             <Badge variant="outline" className="text-xs">
@@ -127,12 +127,12 @@ function StoryCard({ story }: { story: LikedStory }) {
             {story.authorName}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="flex-grow pb-4">
           <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
             {story.summarySnippet}
           </p>
-          
+
           {/* Story Metadata */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-3">

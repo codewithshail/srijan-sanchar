@@ -5,14 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { 
-  BookOpen, 
-  Share2, 
-  ShieldCheck, 
-  Languages, 
-  Calendar, 
-  Eye, 
-  Headphones, 
+import {
+  BookOpen,
+  Share2,
+  ShieldCheck,
+  Languages,
+  Calendar,
+  Eye,
+  Headphones,
   User,
   Clock,
   ArrowLeft,
@@ -86,7 +86,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
   const [selectedLanguage, setSelectedLanguage] = useState("en-IN");
   const [audioData, setAudioData] = useState<ArrayBuffer | null>(null);
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  
+
   const streamingTTS = useStreamingTTS();
 
   // Fetch related stories
@@ -122,7 +122,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
   // Helper function to strip HTML tags and clean text for TTS
   const cleanTextForTTS = (htmlText: string): string => {
     if (!htmlText) return '';
-    
+
     // Remove HTML tags
     const withoutTags = htmlText.replace(/<[^>]*>/g, ' ');
     // Replace multiple spaces with single space
@@ -134,41 +134,41 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
   // Get complete story content for TTS
   const getCompleteStoryText = (): string => {
     let fullText = '';
-    
+
     if (story.storyType === 'blog_story') {
       // For blog stories, use the content
       fullText = story.content || '';
     } else {
       // For life stories, combine all available content
       const parts = [];
-      
+
       // Add title if available
       if (story.title) {
         parts.push(story.title);
       }
-      
+
       // Add long form story if available, otherwise user summary
       if (story.summary?.longFormStory) {
         parts.push(story.summary.longFormStory);
       } else if (story.summary?.userSummary) {
         parts.push(story.summary.userSummary);
       }
-      
+
       // Add psychological summary if available
       if (story.summary?.psySummary) {
         parts.push('Psychological Insights: ' + story.summary.psySummary);
       }
-      
+
       // Add actionable steps if available
       if (story.summary?.actionableSteps && story.summary.actionableSteps.length > 0) {
-        parts.push('Action Steps: ' + story.summary.actionableSteps.map((step, i) => 
+        parts.push('Action Steps: ' + story.summary.actionableSteps.map((step, i) =>
           `${i + 1}. ${typeof step === 'string' ? step : JSON.stringify(step)}`
         ).join(' '));
       }
-      
+
       fullText = parts.join('\n\n');
     }
-    
+
     return fullText;
   };
 
@@ -179,7 +179,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
     // Get complete story text instead of just display content
     const completeText = getCompleteStoryText();
     const cleanText = cleanTextForTTS(completeText);
-    
+
     console.log('[TTS] Story type:', story.storyType);
     console.log('[TTS] Story content length:', story.content?.length || 0);
     console.log('[TTS] Story summary longForm length:', story.summary?.longFormStory?.length || 0);
@@ -199,11 +199,11 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
     try {
       // Check if we need translation (if selected language is not English)
       const needsTranslation = language !== 'en-IN' && language !== 'en-US';
-      
+
       // Always use streaming for all content (with or without translation)
       console.log('[TTS] Using streaming for all content (length:', cleanText.length, ')');
       console.log('[TTS] Translation needed:', needsTranslation);
-      
+
       await streamingTTS.startStreaming({
         text: cleanText,
         language,
@@ -217,9 +217,9 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
         fetch(`/api/stories/${story.id}/analytics`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             eventType: 'listen',
-            languageCode: language 
+            languageCode: language
           })
         }).catch(console.error);
       }
@@ -258,12 +258,12 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
     return minutes;
   };
 
-  const authorName = story.owner.firstName && story.owner.lastName 
+  const authorName = story.owner.firstName && story.owner.lastName
     ? `${story.owner.firstName} ${story.owner.lastName}`
     : story.owner.firstName || "Anonymous";
 
-  const displayContent = story.storyType === 'blog_story' 
-    ? story.content 
+  const displayContent = story.storyType === 'blog_story'
+    ? story.content
     : story.summary?.longFormStory || story.summary?.userSummary;
 
   const readingTime = displayContent ? getReadingTime(displayContent) : 0;
@@ -280,7 +280,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
         </div>
       </div>
 
-      <article className="max-w-4xl mx-auto py-8 px-4">
+      <article className="max-w-5xl mx-auto py-8 px-4 lg:px-8">
         {/* Banner Image */}
         {(story.bannerImageUrl || story.image?.url) && (
           <div className="mb-8">
@@ -369,9 +369,9 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
             )}
 
             {story.storyType === 'life_story' && story.status === 'completed' && isOwner && (
-              <LoadingButton 
-                variant="outline" 
-                onClick={() => scheduleMutation.mutate()} 
+              <LoadingButton
+                variant="outline"
+                onClick={() => scheduleMutation.mutate()}
                 loading={scheduleMutation.isPending}
                 icon={<Calendar className="h-4 w-4" />}
               >
@@ -388,7 +388,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
                     onValueChange={setSelectedLanguage}
                     placeholder="Select language for audio"
                   />
-                  
+
                   <LoadingButton
                     variant="secondary"
                     onClick={() => {
@@ -401,10 +401,10 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
                     disabled={streamingTTS.isStreaming}
                   >
                     <Languages className="mr-2 h-4 w-4" />
-                    {isGeneratingAudio || streamingTTS.isLoading ? "Generating..." : 
-                     streamingTTS.isStreaming ? "Streaming..." : "Generate Audio"}
+                    {isGeneratingAudio || streamingTTS.isLoading ? "Generating..." :
+                      streamingTTS.isStreaming ? "Streaming..." : "Generate Audio"}
                   </LoadingButton>
-                  
+
                   {/* Debug button - remove after testing */}
                   <Button
                     variant="outline"
@@ -424,7 +424,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
                   >
                     Debug Content
                   </Button>
-                  
+
                   {streamingTTS.isStreaming && (
                     <div className="flex items-center gap-2">
                       <div className="text-sm text-gray-600">
@@ -443,8 +443,8 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
 
                 {/* Debug Info */}
                 <div className="text-xs text-gray-500 mt-2">
-                  Debug: audioChunks={streamingTTS.audioChunks.length}, audioData={audioData ? 'exists' : 'none'}, 
-                  isStreaming={streamingTTS.isStreaming ? 'yes' : 'no'}, 
+                  Debug: audioChunks={streamingTTS.audioChunks.length}, audioData={audioData ? 'exists' : 'none'},
+                  isStreaming={streamingTTS.isStreaming ? 'yes' : 'no'},
                   error={streamingTTS.error || 'none'}
                 </div>
 
@@ -482,9 +482,9 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
                           fetch(`/api/stories/${story.id}/analytics`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
+                            body: JSON.stringify({
                               eventType: 'listen',
-                              languageCode: selectedLanguage 
+                              languageCode: selectedLanguage
                             })
                           }).catch(console.error);
                         }
@@ -511,7 +511,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
           {story.storyType === 'blog_story' ? (
             // Blog story content
             story.content ? (
-              <div 
+              <div
                 className="text-lg leading-relaxed locale-content"
                 dangerouslySetInnerHTML={{ __html: story.content }}
               />
@@ -582,7 +582,7 @@ export function StoryReader({ story, isOwner = false }: StoryReaderProps) {
           <section className="mt-16">
             <Separator className="mb-8" />
             <h2 className="text-2xl font-bold mb-6">Related Stories</h2>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {relatedStories.map(relatedStory => (
                 <RelatedStoryCard key={relatedStory.id} story={relatedStory} />
               ))}
@@ -608,14 +608,14 @@ function RelatedStoryCard({ story }: { story: RelatedStory }) {
       <Card className="h-full flex flex-col hover:border-primary transition-colors duration-200 group">
         {story.thumbnailImageUrl && (
           <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-            <img 
-              src={story.thumbnailImageUrl} 
+            <img
+              src={story.thumbnailImageUrl}
               alt={story.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
             />
           </div>
         )}
-        
+
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2 mb-2">
             <Badge variant="outline" className="text-xs">
@@ -630,7 +630,7 @@ function RelatedStoryCard({ story }: { story: RelatedStory }) {
             {story.authorName}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="flex-grow pb-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-1">

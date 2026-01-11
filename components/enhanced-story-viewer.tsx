@@ -5,13 +5,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { 
-  BookOpen, 
-  Share2, 
-  ShieldCheck, 
-  Calendar, 
-  Eye, 
-  Headphones, 
+import {
+  BookOpen,
+  Share2,
+  ShieldCheck,
+  Calendar,
+  Eye,
+  Headphones,
   User,
   Clock,
   ArrowLeft,
@@ -99,12 +99,12 @@ const MarkdownComponents = {
   h4: ({ children }: { children?: React.ReactNode }) => (
     <h4 className="text-lg md:text-xl font-medium mt-4 mb-2 text-foreground">{children}</h4>
   ),
-  
+
   // Paragraphs with proper spacing
   p: ({ children }: { children?: React.ReactNode }) => (
     <p className="text-base md:text-lg leading-relaxed mb-4 text-foreground/90">{children}</p>
   ),
-  
+
   // Lists
   ul: ({ children }: { children?: React.ReactNode }) => (
     <ul className="list-disc pl-6 mb-4 space-y-2">{children}</ul>
@@ -115,14 +115,14 @@ const MarkdownComponents = {
   li: ({ children }: { children?: React.ReactNode }) => (
     <li className="text-base md:text-lg leading-relaxed text-foreground/90">{children}</li>
   ),
-  
+
   // Blockquotes
   blockquote: ({ children }: { children?: React.ReactNode }) => (
     <blockquote className="border-l-4 border-primary/50 pl-4 py-2 my-4 italic text-muted-foreground bg-muted/30 rounded-r-lg">
       {children}
     </blockquote>
   ),
-  
+
   // Code blocks
   code: ({ className, children }: { className?: string; children?: React.ReactNode }) => {
     const isInline = !className;
@@ -142,11 +142,11 @@ const MarkdownComponents = {
   pre: ({ children }: { children?: React.ReactNode }) => (
     <pre className="bg-muted rounded-lg overflow-x-auto my-4">{children}</pre>
   ),
-  
+
   // Links
   a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
-    <a 
-      href={href} 
+    <a
+      href={href}
       className="text-primary hover:underline font-medium"
       target="_blank"
       rel="noopener noreferrer"
@@ -154,7 +154,7 @@ const MarkdownComponents = {
       {children}
     </a>
   ),
-  
+
   // Images with optimal placement
   img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
     const src = typeof props.src === 'string' ? props.src : undefined;
@@ -178,10 +178,10 @@ const MarkdownComponents = {
       </figure>
     );
   },
-  
+
   // Horizontal rule
   hr: () => <Separator className="my-8" />,
-  
+
   // Strong and emphasis
   strong: ({ children }: { children?: React.ReactNode }) => (
     <strong className="font-semibold text-foreground">{children}</strong>
@@ -189,7 +189,7 @@ const MarkdownComponents = {
   em: ({ children }: { children?: React.ReactNode }) => (
     <em className="italic">{children}</em>
   ),
-  
+
   // Tables
   table: ({ children }: { children?: React.ReactNode }) => (
     <div className="overflow-x-auto my-4">
@@ -211,7 +211,7 @@ const MarkdownComponents = {
 
 export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryViewerProps) {
   const [localShareCount, setLocalShareCount] = useState(story.shareCount ?? 0);
-  
+
   // Text highlighting state for audio sync (Requirement 8.6)
   const [highlightEnabled, setHighlightEnabled] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
@@ -269,7 +269,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
   // Get complete story content for audio
   const getCompleteStoryText = useCallback((): string => {
     let fullText = '';
-    
+
     if (story.storyType === 'blog_story') {
       fullText = story.content || '';
     } else {
@@ -284,13 +284,13 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
         parts.push('Psychological Insights: ' + story.summary.psySummary);
       }
       if (story.summary?.actionableSteps && story.summary.actionableSteps.length > 0) {
-        parts.push('Action Steps: ' + story.summary.actionableSteps.map((step, i) => 
+        parts.push('Action Steps: ' + story.summary.actionableSteps.map((step, i) =>
           `${i + 1}. ${typeof step === 'string' ? step : JSON.stringify(step)}`
         ).join(' '));
       }
       fullText = parts.join('\n\n');
     }
-    
+
     return fullText;
   }, [story]);
 
@@ -301,7 +301,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventType: 'view' })
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [story.id, story.status, isOwner]);
 
@@ -319,12 +319,12 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
     return Math.ceil(wordCount / wordsPerMinute);
   };
 
-  const authorName = story.owner.firstName && story.owner.lastName 
+  const authorName = story.owner.firstName && story.owner.lastName
     ? `${story.owner.firstName} ${story.owner.lastName}`
     : story.owner.firstName || "Anonymous";
 
-  const displayContent = story.storyType === 'blog_story' 
-    ? story.content 
+  const displayContent = story.storyType === 'blog_story'
+    ? story.content
     : story.summary?.longFormStory || story.summary?.userSummary;
 
   const readingTime = displayContent ? getReadingTime(displayContent) : 0;
@@ -334,22 +334,22 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container max-w-4xl mx-auto py-3 px-4 flex items-center justify-between">
-          <Link 
-            href="/stories/public" 
+        <div className="container max-w-6xl mx-auto py-3 px-4 flex items-center justify-between">
+          <Link
+            href="/stories/public"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Back to Stories</span>
             <span className="sm:hidden">Back</span>
           </Link>
-          
+
           {/* Quick Actions */}
           <div className="flex items-center gap-2">
             {story.status === "published" && (
               <LikeButton storyId={story.id} variant="ghost" size="sm" />
             )}
-            
+
             <ShareButton
               storyId={story.id}
               storyTitle={story.title || "Untitled Story"}
@@ -364,7 +364,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
         </div>
       </nav>
 
-      <article className="max-w-4xl mx-auto py-6 md:py-10 px-4">
+      <article className="max-w-5xl mx-auto py-6 md:py-10 px-4 lg:px-8">
         {/* Hero Banner Image */}
         {(story.bannerImageUrl || story.image?.url) && (
           <div className="mb-6 md:mb-10">
@@ -426,7 +426,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
                 )}
               </div>
             </div>
-            
+
             <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm">
               {readingTime > 0 && (
                 <div className="flex items-center gap-1">
@@ -463,10 +463,10 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
             )}
 
             {story.storyType === 'life_story' && story.status === 'completed' && isOwner && (
-              <LoadingButton 
-                variant="outline" 
+              <LoadingButton
+                variant="outline"
                 size="sm"
-                onClick={() => scheduleMutation.mutate()} 
+                onClick={() => scheduleMutation.mutate()}
                 loading={scheduleMutation.isPending}
                 icon={<Calendar className="h-4 w-4" />}
               >
@@ -563,7 +563,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
                     Your Path Forward
                   </TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="narrative" className="pt-4">
                   {story.summary.longFormStory ? (
                     <Tabs defaultValue="long-form" className="w-full">
@@ -628,14 +628,14 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
                     )
                   )}
                 </TabsContent>
-                
+
                 <TabsContent value="steps" className="pt-4">
                   <div className="space-y-4">
                     <h3 className="text-xl font-semibold mb-4">Actionable Steps</h3>
                     <ul className="space-y-3">
                       {(story.summary.actionableSteps || []).map((step, i) => (
-                        <li 
-                          key={i} 
+                        <li
+                          key={i}
                           className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg border"
                         >
                           <span className="flex-shrink-0 h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
@@ -681,7 +681,7 @@ export function EnhancedStoryViewer({ story, isOwner = false }: EnhancedStoryVie
           <section className="mt-12 md:mt-16">
             <Separator className="mb-8" />
             <h2 className="text-2xl font-bold mb-6">Related Stories</h2>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {relatedStories.map(relatedStory => (
                 <RelatedStoryCard key={relatedStory.id} story={relatedStory} />
               ))}
@@ -708,8 +708,8 @@ function RelatedStoryCard({ story }: { story: RelatedStory }) {
       <Card className="h-full flex flex-col hover:border-primary/50 hover:shadow-md transition-all duration-200 group overflow-hidden">
         {story.thumbnailImageUrl ? (
           <div className="aspect-video w-full overflow-hidden">
-            <img 
-              src={story.thumbnailImageUrl} 
+            <img
+              src={story.thumbnailImageUrl}
               alt={story.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
@@ -719,7 +719,7 @@ function RelatedStoryCard({ story }: { story: RelatedStory }) {
             <BookOpen className="h-8 w-8 text-muted-foreground/50" />
           </div>
         )}
-        
+
         <CardHeader className="pb-2 flex-grow">
           <div className="flex items-start justify-between gap-2 mb-1">
             <Badge variant="outline" className="text-xs">
@@ -734,7 +734,7 @@ function RelatedStoryCard({ story }: { story: RelatedStory }) {
             {story.authorName}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="pt-0 pb-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center gap-1">

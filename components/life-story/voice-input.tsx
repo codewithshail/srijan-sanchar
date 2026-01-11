@@ -309,6 +309,11 @@ export function VoiceInput({
   }, [state.isSupported, state.selectedLanguage, state.isPaused, disabled, onTranscript, updateFrequencyData]);
 
   const stopRecording = useCallback(() => {
+    // Save any pending interim transcript before stopping
+    if (state.interimTranscript.trim()) {
+      onTranscript(state.interimTranscript);
+    }
+
     // Stop speech recognition
     if (recognitionRef.current) {
       try {
@@ -349,10 +354,16 @@ export function VoiceInput({
       frequencyData: new Array(64).fill(0),
       interimTranscript: "",
     }));
-  }, []);
+  }, [state.interimTranscript, onTranscript]);
 
   const pauseRecording = useCallback(() => {
     if (!state.isRecording || state.isPaused) return;
+
+    // Save any pending interim transcript before pausing
+    if (state.interimTranscript.trim()) {
+      onTranscript(state.interimTranscript);
+      setState((prev) => ({ ...prev, interimTranscript: "" }));
+    }
 
     // Pause speech recognition
     if (recognitionRef.current) {
@@ -374,7 +385,7 @@ export function VoiceInput({
       isPaused: true,
       frequencyData: new Array(64).fill(0),
     }));
-  }, [state.isRecording, state.isPaused]);
+  }, [state.isRecording, state.isPaused, state.interimTranscript, onTranscript]);
 
   const resumeRecording = useCallback(async () => {
     if (!state.isRecording || !state.isPaused) return;

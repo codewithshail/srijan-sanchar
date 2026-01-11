@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { AnalyticsDashboard } from "@/components/analytics-dashboard";
 import { PrintOrderDialog } from "@/components/print-order-dialog";
 import { UserOrderHistory } from "@/components/user-order-history";
+import { useOnboardingTour, TOUR_STEPS } from "@/lib/hooks/use-onboarding-tour";
 
 type Story = {
   id: string;
@@ -76,6 +77,13 @@ type UserAppointment = {
 
 export default function DashboardPage() {
   const qc = useQueryClient();
+
+  // Onboarding tour
+  useOnboardingTour({
+    tourId: "dashboard",
+    steps: TOUR_STEPS.dashboard,
+    delay: 800,
+  });
 
   const { data: stats, isLoading: isLoadingStats } = useQuery<DashboardStats>({
     queryKey: ["dashboardStats"],
@@ -152,7 +160,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="container py-8 pb-24 md:pb-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 md:pb-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
@@ -160,10 +168,17 @@ export default function DashboardPage() {
             Welcome back! Here's an overview of your stories.
           </p>
         </div>
+        {/* Inline New Story button for desktop */}
+        <Link href="/create" className="hidden md:block" id="dashboard-new-story">
+          <Button className="gap-2">
+            <PlusCircle className="h-4 w-4" />
+            New Story
+          </Button>
+        </Link>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
+      <div id="dashboard-stats" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Stories</CardTitle>
@@ -238,7 +253,7 @@ export default function DashboardPage() {
       </div>
 
       <Tabs defaultValue="stories" className="space-y-6">
-        <div className="overflow-x-auto -mx-1 px-1">
+        <div className="overflow-x-auto -mx-1 px-1" id="dashboard-tabs">
           <TabsList className="inline-flex min-w-max lg:grid lg:w-auto lg:grid-cols-5">
             <TabsTrigger value="stories">Stories</TabsTrigger>
             <TabsTrigger value="liked">Liked</TabsTrigger>
@@ -258,7 +273,7 @@ export default function DashboardPage() {
 
           {isLoading && <p>Loading your stories...</p>}
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div id="dashboard-stories" className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {stories?.map((story) => (
               <Card
                 key={story.id}
@@ -272,8 +287,8 @@ export default function DashboardPage() {
                         Status:{" "}
                         <span
                           className={`font-semibold ${story.status === "completed" || story.status === "published"
-                              ? "text-green-500"
-                              : "text-yellow-500"
+                            ? "text-green-500"
+                            : "text-yellow-500"
                             }`}
                         >
                           {story.status}
@@ -449,10 +464,10 @@ export default function DashboardPage() {
                       </CardTitle>
                       <CardDescription className="mt-1">
                         Status: <span className={`font-semibold ${appointment.status === "confirmed" ? "text-green-600" :
-                            appointment.status === "pending" ? "text-yellow-600" :
-                              appointment.status === "completed" ? "text-blue-600" :
-                                appointment.status === "rejected" ? "text-red-600" :
-                                  "text-gray-600"
+                          appointment.status === "pending" ? "text-yellow-600" :
+                            appointment.status === "completed" ? "text-blue-600" :
+                              appointment.status === "rejected" ? "text-red-600" :
+                                "text-gray-600"
                           }`}>
                           {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
                         </span>
@@ -526,15 +541,14 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Floating Action Button */}
-      <Link href="/create">
+      {/* Mobile Floating Action Button */}
+      <Link href="/create" className="md:hidden">
         <Button
           size="lg"
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg md:h-auto md:w-auto md:rounded-md md:px-4"
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg"
           title="Create New Story"
         >
-          <PlusCircle className="h-6 w-6 md:h-4 md:w-4 md:mr-2" />
-          <span className="hidden md:inline">New Story</span>
+          <PlusCircle className="h-6 w-6" />
         </Button>
       </Link>
     </div>

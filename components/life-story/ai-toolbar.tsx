@@ -241,24 +241,24 @@ export function AIToolbar({
               className="h-8 gap-1"
             >
               <Wand2 className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Assist</span>
+              <span className="hidden sm:inline">Srijan Sanchar</span>
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>AI Writing Tools</DropdownMenuLabel>
+            <DropdownMenuLabel>Srijan Sanchar Tools</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
+
             <DropdownMenuItem onClick={() => handleAction("grammar")}>
               <SpellCheck className="h-4 w-4 mr-2" />
               Improve Grammar
             </DropdownMenuItem>
-            
+
             <DropdownMenuItem onClick={() => handleAction("expand")}>
               <Expand className="h-4 w-4 mr-2" />
               Expand Content
             </DropdownMenuItem>
-            
+
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -275,7 +275,7 @@ export function AIToolbar({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            
+
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Languages className="h-4 w-4 mr-2" />
@@ -292,9 +292,9 @@ export function AIToolbar({
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            
+
             <DropdownMenuSeparator />
-            
+
             <DropdownMenuItem onClick={() => handleAction("suggest")}>
               <Lightbulb className="h-4 w-4 mr-2" />
               Get Suggestions

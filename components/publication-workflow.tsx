@@ -33,21 +33,21 @@ interface GeneratedImages {
   };
 }
 
-export function PublicationWorkflow({ 
-  storyId, 
-  initialTitle = "", 
-  onComplete 
+export function PublicationWorkflow({
+  storyId,
+  initialTitle = "",
+  onComplete
 }: PublicationWorkflowProps) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState("");
   const [visibility, setVisibility] = useState<"private" | "public_summary" | "public_long">("private");
-  
+
   const [bannerImages, setBannerImages] = useState<ImageOption[]>([]);
   const [thumbnailImages, setThumbnailImages] = useState<ImageOption[]>([]);
   const [selectedBanner, setSelectedBanner] = useState<string>("");
   const [selectedThumbnail, setSelectedThumbnail] = useState<string>("");
-  
+
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [imagesGenerated, setImagesGenerated] = useState(false);
@@ -73,7 +73,7 @@ export function PublicationWorkflow({
       }
 
       const data: GeneratedImages = await response.json();
-      
+
       // Set banner images with first one selected by default
       const bannerOptions = data.bannerImages.map((url, index) => ({
         url,
@@ -89,7 +89,7 @@ export function PublicationWorkflow({
       }));
       setThumbnailImages(thumbnailOptions);
       setSelectedThumbnail(data.thumbnailImages[0] || "");
-      
+
       setImagesGenerated(true);
       toast.success("Images generated successfully!");
     } catch (error) {
@@ -106,14 +106,14 @@ export function PublicationWorkflow({
 
   const handleBannerSelect = (url: string) => {
     setSelectedBanner(url);
-    setBannerImages(prev => 
+    setBannerImages(prev =>
       prev.map(img => ({ ...img, selected: img.url === url }))
     );
   };
 
   const handleThumbnailSelect = (url: string) => {
     setSelectedThumbnail(url);
-    setThumbnailImages(prev => 
+    setThumbnailImages(prev =>
       prev.map(img => ({ ...img, selected: img.url === url }))
     );
   };
@@ -151,7 +151,7 @@ export function PublicationWorkflow({
       }
 
       const result = await response.json();
-      
+
       if (visibility === "private") {
         toast.success("Story saved as private!");
       } else {
@@ -191,7 +191,7 @@ export function PublicationWorkflow({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="max-w-5xl mx-auto p-6 space-y-8">
       <div className="text-center">
         <h1 className="text-3xl font-bold mb-2">Publish Your Story</h1>
         <p className="text-muted-foreground">
@@ -215,7 +215,7 @@ export function PublicationWorkflow({
               className="mt-1"
             />
           </div>
-          
+
           <div>
             <Label htmlFor="description">Description (Optional)</Label>
             <Textarea
@@ -250,7 +250,7 @@ export function PublicationWorkflow({
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2 p-3 border rounded-lg">
                 <RadioGroupItem value="public_summary" id="public_summary" />
                 <div className="flex-1">
@@ -263,7 +263,7 @@ export function PublicationWorkflow({
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-2 p-3 border rounded-lg">
                 <RadioGroupItem value="public_long" id="public_long" />
                 <div className="flex-1">
@@ -309,11 +309,10 @@ export function PublicationWorkflow({
               {bannerImages.map((image, index) => (
                 <div
                   key={index}
-                  className={`relative cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
-                    selectedBanner === image.url
+                  className={`relative cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${selectedBanner === image.url
                       ? "border-primary ring-2 ring-primary/20"
                       : "border-border hover:border-primary/50"
-                  }`}
+                    }`}
                   onClick={() => handleBannerSelect(image.url)}
                 >
                   <img
@@ -354,11 +353,10 @@ export function PublicationWorkflow({
               {thumbnailImages.map((image, index) => (
                 <div
                   key={index}
-                  className={`relative cursor-pointer border-2 rounded-lg overflow-hidden transition-all aspect-square ${
-                    selectedThumbnail === image.url
+                  className={`relative cursor-pointer border-2 rounded-lg overflow-hidden transition-all aspect-square ${selectedThumbnail === image.url
                       ? "border-primary ring-2 ring-primary/20"
                       : "border-border hover:border-primary/50"
-                  }`}
+                    }`}
                   onClick={() => handleThumbnailSelect(image.url)}
                 >
                   <img
@@ -390,7 +388,7 @@ export function PublicationWorkflow({
         >
           Cancel
         </Button>
-        
+
         <LoadingButton
           onClick={handlePublish}
           loading={isPublishing}

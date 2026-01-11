@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AdminDashboardPage() {
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
       <Tabs defaultValue="users" className="w-full">
         <div className="overflow-x-auto -mx-2 px-2 pb-2">

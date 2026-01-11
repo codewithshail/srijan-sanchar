@@ -12,20 +12,20 @@ import { Button } from "@/components/ui/button";
 import { ShareableStoryCard } from "@/components/shareable-story-card";
 
 type PublicStory = {
-  id: string;
-  title: string;
-  content?: string;
-  storyType: 'life_story' | 'blog_story';
-  summarySnippet: string;
-  visibility: 'public_summary' | 'public_long';
-  authorName: string;
-  publishedAt: string;
-  viewCount: number;
-  listenCount: number;
-  likeCount: number;
-  shareCount: number;
-  thumbnailImageUrl?: string;
-  bannerImageUrl?: string;
+    id: string;
+    title: string;
+    content?: string;
+    storyType: 'life_story' | 'blog_story';
+    summarySnippet: string;
+    visibility: 'public_summary' | 'public_long';
+    authorName: string;
+    publishedAt: string;
+    viewCount: number;
+    listenCount: number;
+    likeCount: number;
+    shareCount: number;
+    thumbnailImageUrl?: string;
+    bannerImageUrl?: string;
 };
 
 export default function PublicStoriesPage() {
@@ -64,7 +64,7 @@ export default function PublicStoriesPage() {
     const hasActiveFilters = searchTerm || storyTypeFilter || sortBy !== 'newest' || authorFilter;
 
     return (
-        <div className="container py-8">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <header className="text-center mb-10">
                 <h1 className="text-4xl font-bold tracking-tight">Explore Public Stories</h1>
                 <p className="mt-2 text-lg text-muted-foreground">Discover the narratives and journeys shared by our community.</p>
@@ -103,8 +103,8 @@ export default function PublicStoriesPage() {
                             <SelectTrigger className="w-40">
                                 <Filter className="h-4 w-4 mr-2" />
                                 <SelectValue>
-                                    {storyTypeFilter === "life_story" ? "Life Stories" : 
-                                     storyTypeFilter === "blog_story" ? "Blog Stories" : "All Types"}
+                                    {storyTypeFilter === "life_story" ? "Life Stories" :
+                                        storyTypeFilter === "blog_story" ? "Blog Stories" : "All Types"}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -119,8 +119,8 @@ export default function PublicStoriesPage() {
                             <SelectTrigger className="w-40">
                                 <SelectValue>
                                     {sortBy === "newest" ? "Newest First" :
-                                     sortBy === "oldest" ? "Oldest First" :
-                                     sortBy === "mostViewed" ? "Most Viewed" : "Title A-Z"}
+                                        sortBy === "oldest" ? "Oldest First" :
+                                            sortBy === "mostViewed" ? "Most Viewed" : "Title A-Z"}
                                 </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
@@ -160,8 +160,8 @@ export default function PublicStoriesPage() {
                         )}
                         {sortBy !== 'newest' && (
                             <Badge variant="secondary">
-                                Sort: {sortBy === 'oldest' ? 'Oldest First' : 
-                                      sortBy === 'mostViewed' ? 'Most Viewed' : 'Title A-Z'}
+                                Sort: {sortBy === 'oldest' ? 'Oldest First' :
+                                    sortBy === 'mostViewed' ? 'Most Viewed' : 'Title A-Z'}
                             </Badge>
                         )}
                     </div>
@@ -170,17 +170,17 @@ export default function PublicStoriesPage() {
 
             {/* Loading State */}
             {isLoading && (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {Array.from({ length: 6 }).map((_, i) => <StorySkeleton key={i} />)}
                 </div>
             )}
-            
+
             {/* Stories Grid */}
             {!isLoading && (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {stories?.map(story => (
-                        <ShareableStoryCard 
-                            key={story.id} 
+                        <ShareableStoryCard
+                            key={story.id}
                             story={{
                                 id: story.id,
                                 title: story.title,
@@ -208,7 +208,7 @@ export default function PublicStoriesPage() {
                         {hasActiveFilters ? 'No Stories Found' : 'The Library is Quiet'}
                     </h2>
                     <p className="text-muted-foreground mb-4">
-                        {hasActiveFilters 
+                        {hasActiveFilters
                             ? 'Try adjusting your search or filters to find more stories.'
                             : 'No public stories have been shared yet. Be the first!'
                         }

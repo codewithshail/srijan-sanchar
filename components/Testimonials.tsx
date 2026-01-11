@@ -96,7 +96,7 @@ export default function Testimonials() {
                     </p>
                 </div>
 
-                <div className="relative max-w-6xl mx-auto">
+                <div className="relative max-w-7xl mx-auto">
                     {/* Navigation Buttons */}
                     <div className="hidden lg:flex absolute -left-4 top-1/2 -translate-y-1/2 z-10">
                         <Button

@@ -31,7 +31,7 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
       await fetch("/api/user/complete-onboarding", {
         method: "POST",
       });
-      
+
       toast.success("New story started");
       if (storyType === 'life_story') {
         router.push(`/life-story/${data.id}`);
@@ -52,7 +52,7 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
   };
 
   return (
-    <div className="container max-w-4xl mx-auto py-8 px-4">
+    <div className="container max-w-5xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Choose Your Story Type</h1>
         <p className="text-muted-foreground text-lg">
@@ -62,17 +62,16 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Life Story Card */}
-        <Card 
-          className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50 ${
-            selectedType === 'life_story' ? 'border-primary shadow-lg' : ''
-          }`}
+        <Card
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50 ${selectedType === 'life_story' ? 'border-primary shadow-lg' : ''
+            }`}
           onClick={() => handleSelect('life_story')}
         >
           <CardHeader className="text-center pb-4">
             <div className="mx-auto mb-4 p-3 bg-primary/10 rounded-full w-fit">
               <BookOpen className="h-8 w-8 text-primary" />
             </div>
-            <CardTitle className="text-xl">Change Your Story, Change Your Life</CardTitle>
+            <CardTitle className="text-xl">Write Your Own Life Story</CardTitle>
             <CardDescription className="text-base">
               Guided 7-stage journey for personal transformation
             </CardDescription>
@@ -105,10 +104,9 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
         </Card>
 
         {/* Blog Story Card */}
-        <Card 
-          className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50 ${
-            selectedType === 'blog_story' ? 'border-primary shadow-lg' : ''
-          }`}
+        <Card
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-primary/50 ${selectedType === 'blog_story' ? 'border-primary shadow-lg' : ''
+            }`}
           onClick={() => handleSelect('blog_story')}
         >
           <CardHeader className="text-center pb-4">
@@ -117,7 +115,7 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
             </div>
             <CardTitle className="text-xl">Write a Story</CardTitle>
             <CardDescription className="text-base">
-              Free-form creative writing with AI assistance
+              Free-form creative writing with Srijan Sanchar assistance
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -126,7 +124,7 @@ export default function StoryTypeSelection({ onSelect }: StoryTypeSelectionProps
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>• Creative storytelling and fiction</li>
                 <li>• Personal experiences and memories</li>
-                <li>• AI-enhanced content generation</li>
+                <li>• Srijan Sanchar-enhanced content generation</li>
                 <li>• Public sharing and discovery</li>
               </ul>
             </div>

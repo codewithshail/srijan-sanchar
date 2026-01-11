@@ -22,10 +22,10 @@ export default function ExplorePage() {
   })
 
   return (
-    <div className="container py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Discover Stories</h1>
       {isLoading && <p>Loading...</p>}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {data?.map((s) => (
           <Link key={s.id} href={`/story/${s.id}`}>
             <Card className="h-full hover:border-primary">

@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function OrdersPage() {
   return (
-    <div className="container py-8 max-w-4xl">
+    <div className="container py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex items-center gap-4 mb-6">
         <Link href="/dashboard">
           <Button variant="ghost" size="icon">

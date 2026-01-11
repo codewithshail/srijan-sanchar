@@ -19,6 +19,7 @@ import {
 import { StageNavigator, StageEditor, SubmissionDialog } from "@/components/life-story";
 import { LIFE_STAGES, type LifeStageId } from "@/lib/life-stages";
 import { cn } from "@/lib/utils";
+import { useOnboardingTour, TOUR_STEPS } from "@/lib/hooks/use-onboarding-tour";
 
 interface StageData {
   content: string;
@@ -48,6 +49,13 @@ export default function LifeStoryEditorPage() {
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+
+  // Onboarding tour
+  useOnboardingTour({
+    tourId: "life-story",
+    steps: TOUR_STEPS.lifeStory,
+    delay: 1000,
+  });
 
   // Fetch stages data
   const {
@@ -210,7 +218,7 @@ export default function LifeStoryEditorPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)]">
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex w-80 border-r flex-col bg-muted/30">
+      <aside id="lifestory-stages" className="hidden lg:flex w-80 border-r flex-col bg-muted/30">
         <StageNavigator
           currentStageId={currentStageId}
           completedStages={completedStages}
@@ -219,6 +227,7 @@ export default function LifeStoryEditorPage() {
         />
         <div className="p-4 border-t">
           <LoadingButton
+            id="lifestory-submit"
             className="w-full"
             onClick={handleSubmitStory}
             disabled={completedStages.length === 0}
@@ -279,7 +288,7 @@ export default function LifeStoryEditorPage() {
       </div>
 
       {/* Main Editor Area */}
-      <main className={cn("flex-1 flex flex-col", "lg:pt-0 pt-14")}>
+      <main id="lifestory-editor" className={cn("flex-1 flex flex-col", "lg:pt-0 pt-14")}>
         <StageEditor
           stageId={currentStageId}
           content={localContent[currentStageId] || ""}
